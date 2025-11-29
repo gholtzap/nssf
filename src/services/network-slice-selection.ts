@@ -240,6 +240,10 @@ export const selectNetworkSlicesForRegistration = async (
         configuredSnssai: subscribedSnssai.subscribedSnssai
       };
 
+      if (subscription.defaultSnssai && snssaiMatches(subscribedSnssai.subscribedSnssai, subscription.defaultSnssai)) {
+        configuredEntry.defaultIndication = true;
+      }
+
       if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && isRoaming) {
         const homeSnssai = await getMappingForSnssai(
           subscribedSnssai.subscribedSnssai,
@@ -532,6 +536,10 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
       const configuredEntry: ConfiguredSnssai = {
         configuredSnssai: subscribedSnssai.subscribedSnssai
       };
+
+      if (subscription.defaultSnssai && snssaiMatches(subscribedSnssai.subscribedSnssai, subscription.defaultSnssai)) {
+        configuredEntry.defaultIndication = true;
+      }
 
       if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && isRoaming) {
         const homeSnssai = await getMappingForSnssai(

@@ -169,13 +169,13 @@ My testing framework of choice is Mocha.
 - Local breakout roaming slice selection
 - VPLMN/HPLMN S-NSSAI mapping for roaming
 - Home PLMN identification and handling
+- Default configured S-NSSAI handling
 
 ## NOT IMPLEMENTED FEATURES
 
 ### Geographical & Topology Support
 
 ### Subscription & Policy Management
-- Default configured S-NSSAI handling
 - Network Slice-Specific Registration Group (NSSRG) support
 - UE NSSRG support indication handling
 - NSSRG suppression indication handling

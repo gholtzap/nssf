@@ -30,6 +30,7 @@ export type AllowedNssai = {
 export type ConfiguredSnssai = {
   configuredSnssai: Snssai;
   mappedHomeSnssai?: Snssai;
+  defaultIndication?: boolean;
 };
 
 export type NsagInfo = {
