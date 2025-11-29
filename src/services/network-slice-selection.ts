@@ -11,18 +11,20 @@ import {
   NsiInformation,
   MappingOfSnssai
 } from '../types/nnssf-nsselection-types';
-import { Snssai, PlmnId, Tai, AccessType } from '../types/common-types';
+import { Snssai, PlmnId, Tai, AccessType, SupportedFeatures } from '../types/common-types';
 import { SliceConfiguration, NsiConfiguration } from '../types/db-types';
 import { getSubscriptionBySupi } from './subscription';
 import { performAmfSelection } from './amf-selection';
 import { determineAllowedNssai } from './allowed-nssai';
 import { processMappingRequests, getMappingForSnssai, getReverseMappingForSnssai } from './snssai-mapping';
+import { negotiateFeatures } from './feature-negotiation';
 
 type NetworkSliceSelectionInput = {
   sliceInfoForRegistration: SliceInfoForRegistration;
   homePlmnId: PlmnId;
   supi: string;
   tai?: Tai;
+  supportedFeatures?: SupportedFeatures;
 };
 
 type PduSessionSelectionInput = {
@@ -30,6 +32,7 @@ type PduSessionSelectionInput = {
   homePlmnId: PlmnId;
   supi: string;
   tai?: Tai;
+  supportedFeatures?: SupportedFeatures;
 };
 
 type UeConfigurationUpdateInput = {
@@ -37,6 +40,7 @@ type UeConfigurationUpdateInput = {
   homePlmnId: PlmnId;
   supi: string;
   tai?: Tai;
+  supportedFeatures?: SupportedFeatures;
 };
 
 const snssaiMatches = (s1: Snssai, s2: Snssai): boolean => {
@@ -108,7 +112,7 @@ const selectNsiForSnssai = async (
 export const selectNetworkSlicesForRegistration = async (
   input: NetworkSliceSelectionInput
 ): Promise<AuthorizedNetworkSliceInfo> => {
-  const { sliceInfoForRegistration, homePlmnId, supi, tai } = input;
+  const { sliceInfoForRegistration, homePlmnId, supi, tai, supportedFeatures } = input;
 
   try {
     const slicesCollection = getCollection<SliceConfiguration>('slices');
@@ -262,11 +266,14 @@ export const selectNetworkSlicesForRegistration = async (
     }
   }
 
+    const negotiatedFeatures = negotiateFeatures(supportedFeatures);
+
     const result: AuthorizedNetworkSliceInfo = {
       allowedNssaiList: allowedNssaiList.length > 0 ? allowedNssaiList : undefined,
       configuredNssai: configuredNssai.length > 0 ? configuredNssai : undefined,
       rejectedNssaiInPlmn: rejectedNssaiInPlmn.length > 0 ? rejectedNssaiInPlmn : undefined,
-      rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined
+      rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined,
+      supportedFeatures: negotiatedFeatures
     };
 
     if (mappingOfNssai && mappingOfNssai.length > 0) {
@@ -302,7 +309,7 @@ export const selectNetworkSlicesForRegistration = async (
 export const selectNetworkSlicesForPDUSession = async (
   input: PduSessionSelectionInput
 ): Promise<AuthorizedNetworkSliceInfo> => {
-  const { sliceInfoForPDUSession, homePlmnId, supi, tai } = input;
+  const { sliceInfoForPDUSession, homePlmnId, supi, tai, supportedFeatures } = input;
 
   try {
     const slicesCollection = getCollection<SliceConfiguration>('slices');
@@ -395,8 +402,11 @@ export const selectNetworkSlicesForPDUSession = async (
       accessType: AccessType.THREE_GPP_ACCESS
     };
 
+    const negotiatedFeatures = negotiateFeatures(supportedFeatures);
+
     return {
-      allowedNssaiList: [allowedNssai]
+      allowedNssaiList: [allowedNssai],
+      supportedFeatures: negotiatedFeatures
     };
   } catch (error) {
     console.error('Error in selectNetworkSlicesForPDUSession:', error);
@@ -408,7 +418,7 @@ export const selectNetworkSlicesForPDUSession = async (
 export const selectNetworkSlicesForUEConfigurationUpdate = async (
   input: UeConfigurationUpdateInput
 ): Promise<AuthorizedNetworkSliceInfo> => {
-  const { sliceInfoForUEConfigurationUpdate, homePlmnId, supi, tai } = input;
+  const { sliceInfoForUEConfigurationUpdate, homePlmnId, supi, tai, supportedFeatures } = input;
 
   try {
     const slicesCollection = getCollection<SliceConfiguration>('slices');
@@ -563,11 +573,14 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
     mappingOfNssai = sliceInfoForUEConfigurationUpdate.mappingOfNssai;
   }
 
+    const negotiatedFeatures = negotiateFeatures(supportedFeatures);
+
     const result: AuthorizedNetworkSliceInfo = {
       allowedNssaiList: allowedNssaiList.length > 0 ? allowedNssaiList : undefined,
       configuredNssai: configuredNssai.length > 0 ? configuredNssai : undefined,
       rejectedNssaiInPlmn: rejectedNssaiInPlmn.length > 0 ? rejectedNssaiInPlmn : undefined,
-      rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined
+      rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined,
+      supportedFeatures: negotiatedFeatures
     };
 
     if (mappingOfNssai && mappingOfNssai.length > 0) {

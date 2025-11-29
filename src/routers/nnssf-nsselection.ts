@@ -134,7 +134,8 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
         sliceInfoForRegistration: sliceInfoRequestForRegistration,
         homePlmnId: homePlmnId!,
         supi: supi!,
-        tai
+        tai,
+        supportedFeatures
       });
     } else if (sliceInfoRequestForPduSessionRaw) {
       const { value: sliceInfoRequestForPduSession, error: parseError } =
@@ -178,7 +179,8 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
         sliceInfoForPDUSession: sliceInfoRequestForPduSession,
         homePlmnId: homePlmnId!,
         supi: supi!,
-        tai
+        tai,
+        supportedFeatures
       });
     } else {
       const { value: sliceInfoRequestForUeCu, error: parseError } =
@@ -213,7 +215,8 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
         sliceInfoForUEConfigurationUpdate: sliceInfoRequestForUeCu,
         homePlmnId: homePlmnId!,
         supi: supi!,
-        tai
+        tai,
+        supportedFeatures
       });
     }
 

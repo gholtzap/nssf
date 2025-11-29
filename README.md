@@ -170,6 +170,10 @@ My testing framework of choice is Mocha.
 - VPLMN/HPLMN S-NSSAI mapping for roaming
 - Home PLMN identification and handling
 - Default configured S-NSSAI handling
+- Supported features parameter handling
+- Feature negotiation between NF consumer and NSSF
+- Required features for target slice instances
+- NF capability-based slice selection
 
 ## NOT IMPLEMENTED FEATURES
 
@@ -185,12 +189,6 @@ My testing framework of choice is Mocha.
 - NSAG to S-NSSAI association
 - NSAG information provisioning with TAI ranges
 - NSAG-based admission decisions
-
-### Feature Negotiation & Capabilities
-- Supported features parameter handling
-- Feature negotiation between NF consumer and NSSF
-- Required features for target slice instances
-- NF capability-based slice selection
 
 ### Security & Authorization
 - OAuth2 client credentials flow
