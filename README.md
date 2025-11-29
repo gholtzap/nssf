@@ -164,23 +164,15 @@ My testing framework of choice is Mocha.
 - Requested NSSAI maximum limit enforcement (8 S-NSSAI)
 - Requested NSSAI subscription filtering
 - Requested NSSAI prioritization based on default indication
-
-## NOT IMPLEMENTED FEATURES
-
-### Core Network Slice Selection
-- Rejected NSSAI handling (in PLMN and in TA)
-
-### Geographical & Topology Support
-- Tracking Area (TAI) based slice availability
-- TA-specific rejected NSSAI handling
-- PLMN-specific slice configuration
-- Home PLMN identification and handling
-
-### Roaming Support
 - Roaming indication processing (non-roaming, local breakout, home-routed)
 - Home-routed roaming slice selection
 - Local breakout roaming slice selection
-- VPLMN/HPLMN S-NSSAI mapping
+- VPLMN/HPLMN S-NSSAI mapping for roaming
+
+## NOT IMPLEMENTED FEATURES
+
+### Geographical & Topology Support
+- Home PLMN identification and handling
 
 ### Subscription & Policy Management
 - Default configured S-NSSAI handling

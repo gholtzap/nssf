@@ -129,6 +129,9 @@ export const selectNetworkSlicesForRegistration = async (
     }
 
     const servingPlmnId = subscription.plmnId;
+    const roamingIndication = sliceInfoForRegistration.roamingIndication || RoamingIndication.NON_ROAMING;
+    const isRoaming = !plmnMatches(servingPlmnId, homePlmnId);
+    const targetPlmnId = roamingIndication === RoamingIndication.LOCAL_BREAKOUT && isRoaming ? servingPlmnId : homePlmnId;
 
     if (sliceInfoForRegistration.requestMapping && sliceInfoForRegistration.sNssaiForMapping) {
       mappingOfNssai = await processMappingRequests(
@@ -167,15 +170,10 @@ export const selectNetworkSlicesForRegistration = async (
     }
 
     const availableSlice = availableSlices.find((slice: SliceConfiguration) =>
-      snssaiMatches(slice.snssai, snssai)
+      snssaiMatches(slice.snssai, snssai) && plmnMatches(slice.plmnId, targetPlmnId)
     );
 
     if (!availableSlice) {
-      rejectedNssaiInPlmn.push(snssai);
-      continue;
-    }
-
-    if (!plmnMatches(availableSlice.plmnId, homePlmnId)) {
       rejectedNssaiInPlmn.push(snssai);
       continue;
     }
@@ -187,7 +185,7 @@ export const selectNetworkSlicesForRegistration = async (
 
     const policyResult = await determineAllowedNssai({
       snssai,
-      plmnId: homePlmnId,
+      plmnId: targetPlmnId,
       tai,
       subscription,
       slice: availableSlice
@@ -205,12 +203,21 @@ export const selectNetworkSlicesForRegistration = async (
     const allowedSnssaiList: AllowedSnssai[] = [];
 
     for (const snssai of processedSnssais) {
-      const nsiInformationList = await selectNsiForSnssai(snssai, homePlmnId, tai);
+      const nsiInformationList = await selectNsiForSnssai(snssai, targetPlmnId, tai);
 
-      allowedSnssaiList.push({
+      const allowedSnssaiEntry: AllowedSnssai = {
         allowedSnssai: snssai,
         nsiInformationList: nsiInformationList.length > 0 ? nsiInformationList : undefined
-      });
+      };
+
+      if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && isRoaming) {
+        const homeSnssai = await getMappingForSnssai(snssai, servingPlmnId, homePlmnId, tai);
+        if (homeSnssai) {
+          allowedSnssaiEntry.mappedHomeSnssai = homeSnssai;
+        }
+      }
+
+      allowedSnssaiList.push(allowedSnssaiEntry);
     }
 
     allowedNssaiList.push({
@@ -225,7 +232,7 @@ export const selectNetworkSlicesForRegistration = async (
 
   for (const subscribedSnssai of snssaisForConfigured) {
     const slice = availableSlices.find((s: SliceConfiguration) =>
-      snssaiMatches(s.snssai, subscribedSnssai.subscribedSnssai)
+      snssaiMatches(s.snssai, subscribedSnssai.subscribedSnssai) && plmnMatches(s.plmnId, targetPlmnId)
     );
 
     if (slice && isSliceAvailableInTai(slice, tai)) {
@@ -233,7 +240,7 @@ export const selectNetworkSlicesForRegistration = async (
         configuredSnssai: subscribedSnssai.subscribedSnssai
       };
 
-      if (!plmnMatches(servingPlmnId, homePlmnId)) {
+      if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && isRoaming) {
         const homeSnssai = await getMappingForSnssai(
           subscribedSnssai.subscribedSnssai,
           servingPlmnId,
@@ -243,6 +250,8 @@ export const selectNetworkSlicesForRegistration = async (
         if (homeSnssai) {
           configuredEntry.mappedHomeSnssai = homeSnssai;
         }
+      } else if (roamingIndication === RoamingIndication.LOCAL_BREAKOUT && isRoaming) {
+        configuredEntry.mappedHomeSnssai = subscribedSnssai.subscribedSnssai;
       }
 
       configuredNssai.push(configuredEntry);
@@ -263,7 +272,7 @@ export const selectNetworkSlicesForRegistration = async (
     if (processedSnssais.length === 0 && requestedNssais.length > 0) {
       const amfSelectionResult = await performAmfSelection({
         targetSnssais: requestedNssais,
-        plmnId: homePlmnId,
+        plmnId: targetPlmnId,
         tai
       });
 
@@ -295,7 +304,7 @@ export const selectNetworkSlicesForPDUSession = async (
     const slicesCollection = getCollection<SliceConfiguration>('slices');
 
     const requestedSnssai = sliceInfoForPDUSession.sNssai;
-    const roamingIndication = sliceInfoForPDUSession.roamingIndication;
+    const roamingIndication = sliceInfoForPDUSession.roamingIndication || RoamingIndication.NON_ROAMING;
     const homeSnssai = sliceInfoForPDUSession.homeSnssai;
 
     const subscription = await getSubscriptionBySupi(supi, homePlmnId);
@@ -306,9 +315,17 @@ export const selectNetworkSlicesForPDUSession = async (
     };
   }
 
+  const servingPlmnId = subscription.plmnId;
+  const isRoaming = !plmnMatches(servingPlmnId, homePlmnId);
+
   let targetSnssai = requestedSnssai;
+  let targetPlmnId = homePlmnId;
+
   if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && homeSnssai) {
     targetSnssai = homeSnssai;
+    targetPlmnId = homePlmnId;
+  } else if (roamingIndication === RoamingIndication.LOCAL_BREAKOUT && isRoaming) {
+    targetPlmnId = servingPlmnId;
   }
 
   const isSubscribed = subscription.subscribedSnssais.some(s =>
@@ -324,16 +341,10 @@ export const selectNetworkSlicesForPDUSession = async (
   const availableSlices = await slicesCollection.find({}).toArray();
 
   const availableSlice = availableSlices.find((slice: SliceConfiguration) =>
-    snssaiMatches(slice.snssai, targetSnssai)
+    snssaiMatches(slice.snssai, targetSnssai) && plmnMatches(slice.plmnId, targetPlmnId)
   );
 
   if (!availableSlice) {
-    return {
-      rejectedNssaiInPlmn: [requestedSnssai]
-    };
-  }
-
-  if (!plmnMatches(availableSlice.plmnId, homePlmnId)) {
     return {
       rejectedNssaiInPlmn: [requestedSnssai]
     };
@@ -347,7 +358,7 @@ export const selectNetworkSlicesForPDUSession = async (
 
   const policyResult = await determineAllowedNssai({
     snssai: targetSnssai,
-    plmnId: homePlmnId,
+    plmnId: targetPlmnId,
     tai,
     subscription,
     slice: availableSlice
@@ -359,7 +370,7 @@ export const selectNetworkSlicesForPDUSession = async (
     };
   }
 
-  const nsiInformationList = await selectNsiForSnssai(requestedSnssai, homePlmnId, tai);
+  const nsiInformationList = await selectNsiForSnssai(requestedSnssai, targetPlmnId, tai);
 
   const allowedSnssai: AllowedSnssai = {
     allowedSnssai: requestedSnssai,
@@ -368,6 +379,11 @@ export const selectNetworkSlicesForPDUSession = async (
 
   if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && homeSnssai) {
     allowedSnssai.mappedHomeSnssai = homeSnssai;
+  } else if (roamingIndication === RoamingIndication.LOCAL_BREAKOUT && isRoaming) {
+    const homeSnssaiMapping = await getMappingForSnssai(requestedSnssai, servingPlmnId, homePlmnId, tai);
+    if (homeSnssaiMapping) {
+      allowedSnssai.mappedHomeSnssai = homeSnssaiMapping;
+    }
   }
 
     const allowedNssai: AllowedNssai = {
@@ -409,6 +425,9 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
   }
 
   const servingPlmnId = subscription.plmnId;
+  const roamingIndication = sliceInfoForUEConfigurationUpdate.roamingIndication || RoamingIndication.NON_ROAMING;
+  const isRoaming = !plmnMatches(servingPlmnId, homePlmnId);
+  const targetPlmnId = roamingIndication === RoamingIndication.LOCAL_BREAKOUT && isRoaming ? servingPlmnId : homePlmnId;
 
   const subscribedSnssais = subscription.subscribedSnssais;
   const requestedNssais = sliceInfoForUEConfigurationUpdate.requestedNssai || [];
@@ -444,15 +463,10 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
     }
 
     const availableSlice = availableSlices.find((slice: SliceConfiguration) =>
-      snssaiMatches(slice.snssai, snssai)
+      snssaiMatches(slice.snssai, snssai) && plmnMatches(slice.plmnId, targetPlmnId)
     );
 
     if (!availableSlice) {
-      rejectedNssaiInPlmn.push(snssai);
-      continue;
-    }
-
-    if (!plmnMatches(availableSlice.plmnId, homePlmnId)) {
       rejectedNssaiInPlmn.push(snssai);
       continue;
     }
@@ -464,7 +478,7 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
 
     const policyResult = await determineAllowedNssai({
       snssai,
-      plmnId: homePlmnId,
+      plmnId: targetPlmnId,
       tai,
       subscription,
       slice: availableSlice
@@ -482,12 +496,21 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
     const allowedSnssaiList: AllowedSnssai[] = [];
 
     for (const snssai of processedSnssais) {
-      const nsiInformationList = await selectNsiForSnssai(snssai, homePlmnId, tai);
+      const nsiInformationList = await selectNsiForSnssai(snssai, targetPlmnId, tai);
 
-      allowedSnssaiList.push({
+      const allowedSnssaiEntry: AllowedSnssai = {
         allowedSnssai: snssai,
         nsiInformationList: nsiInformationList.length > 0 ? nsiInformationList : undefined
-      });
+      };
+
+      if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && isRoaming) {
+        const homeSnssai = await getMappingForSnssai(snssai, servingPlmnId, homePlmnId, tai);
+        if (homeSnssai) {
+          allowedSnssaiEntry.mappedHomeSnssai = homeSnssai;
+        }
+      }
+
+      allowedSnssaiList.push(allowedSnssaiEntry);
     }
 
     allowedNssaiList.push({
@@ -502,7 +525,7 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
 
   for (const subscribedSnssai of snssaisForConfigured) {
     const slice = availableSlices.find((s: SliceConfiguration) =>
-      snssaiMatches(s.snssai, subscribedSnssai.subscribedSnssai)
+      snssaiMatches(s.snssai, subscribedSnssai.subscribedSnssai) && plmnMatches(s.plmnId, targetPlmnId)
     );
 
     if (slice && isSliceAvailableInTai(slice, tai)) {
@@ -510,7 +533,7 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
         configuredSnssai: subscribedSnssai.subscribedSnssai
       };
 
-      if (!plmnMatches(servingPlmnId, homePlmnId)) {
+      if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && isRoaming) {
         const homeSnssai = await getMappingForSnssai(
           subscribedSnssai.subscribedSnssai,
           servingPlmnId,
@@ -520,6 +543,8 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
         if (homeSnssai) {
           configuredEntry.mappedHomeSnssai = homeSnssai;
         }
+      } else if (roamingIndication === RoamingIndication.LOCAL_BREAKOUT && isRoaming) {
+        configuredEntry.mappedHomeSnssai = subscribedSnssai.subscribedSnssai;
       }
 
       configuredNssai.push(configuredEntry);

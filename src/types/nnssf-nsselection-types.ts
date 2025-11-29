@@ -89,6 +89,7 @@ export type SliceInfoForRegistration = {
   defaultConfiguredSnssaiInd?: boolean;
   mappingOfNssai?: MappingOfSnssai[];
   requestMapping?: boolean;
+  roamingIndication?: RoamingIndication;
   ueSupNssrgInd?: boolean;
   suppressNssrgInd?: boolean;
   nsagSupported?: boolean;
@@ -107,6 +108,7 @@ export type SliceInfoForUEConfigurationUpdate = {
   defaultConfiguredSnssaiInd?: boolean;
   requestedNssai?: Snssai[];
   mappingOfNssai?: MappingOfSnssai[];
+  roamingIndication?: RoamingIndication;
   ueSupNssrgInd?: boolean;
   suppressNssrgInd?: boolean;
   rejectedNssaiRa?: Snssai[];
