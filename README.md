@@ -158,12 +158,17 @@ My testing framework of choice is Mocha.
 - S-NSSAI mapping configuration storage
 - S-NSSAI mapping configuration management API
 - Configured NSSAI determination with mapping support
+- Requested NSSAI validation and processing
+- Requested NSSAI format validation
+- Requested NSSAI duplicate detection
+- Requested NSSAI maximum limit enforcement (8 S-NSSAI)
+- Requested NSSAI subscription filtering
+- Requested NSSAI prioritization based on default indication
 
 ## NOT IMPLEMENTED FEATURES
 
 ### Core Network Slice Selection
 - Rejected NSSAI handling (in PLMN and in TA)
-- Requested NSSAI validation and processing
 
 ### Geographical & Topology Support
 - Tracking Area (TAI) based slice availability

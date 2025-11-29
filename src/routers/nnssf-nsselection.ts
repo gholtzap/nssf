@@ -6,6 +6,7 @@ import { createProblemDetails, InvalidParam } from '../types/problem-details-typ
 import { validateRequiredParam, validatePlmnId, validateTai, validateSupi, parseJsonParam, validateSnssai } from '../utils/validation';
 import { DatabaseError } from '../db/mongodb';
 import { NrfError } from '../utils/errors';
+import { validateRequestedNssai } from '../services/requested-nssai-validation';
 
 const router = Router();
 
@@ -91,22 +92,19 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
         ));
       }
 
-      if (sliceInfoRequestForRegistration.requestedNssai) {
-        for (let i = 0; i < sliceInfoRequestForRegistration.requestedNssai.length; i++) {
-          const snssaiError = validateSnssai(
-            sliceInfoRequestForRegistration.requestedNssai[i],
-            `slice-info-request-for-registration.requestedNssai[${i}]`
-          );
-          if (snssaiError) {
-            return res.status(400).json(createProblemDetails(
-              400,
-              'Invalid requested NSSAI',
-              'The requested NSSAI contains invalid S-NSSAI values',
-              undefined,
-              [snssaiError]
-            ));
-          }
-        }
+      const requestedNssaiValidation = validateRequestedNssai(
+        sliceInfoRequestForRegistration.requestedNssai,
+        'slice-info-request-for-registration.requestedNssai'
+      );
+
+      if (!requestedNssaiValidation.isValid) {
+        return res.status(400).json(createProblemDetails(
+          400,
+          'Invalid requested NSSAI',
+          'The requested NSSAI is invalid',
+          undefined,
+          requestedNssaiValidation.invalidParams
+        ));
       }
 
       authorizedNetworkSliceInfo = await selectNetworkSlicesForRegistration({
@@ -173,22 +171,19 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
         ));
       }
 
-      if (sliceInfoRequestForUeCu.requestedNssai) {
-        for (let i = 0; i < sliceInfoRequestForUeCu.requestedNssai.length; i++) {
-          const snssaiError = validateSnssai(
-            sliceInfoRequestForUeCu.requestedNssai[i],
-            `slice-info-request-for-ue-cu.requestedNssai[${i}]`
-          );
-          if (snssaiError) {
-            return res.status(400).json(createProblemDetails(
-              400,
-              'Invalid requested NSSAI',
-              'The requested NSSAI contains invalid S-NSSAI values',
-              undefined,
-              [snssaiError]
-            ));
-          }
-        }
+      const requestedNssaiValidation = validateRequestedNssai(
+        sliceInfoRequestForUeCu.requestedNssai,
+        'slice-info-request-for-ue-cu.requestedNssai'
+      );
+
+      if (!requestedNssaiValidation.isValid) {
+        return res.status(400).json(createProblemDetails(
+          400,
+          'Invalid requested NSSAI',
+          'The requested NSSAI is invalid',
+          undefined,
+          requestedNssaiValidation.invalidParams
+        ));
       }
 
       authorizedNetworkSliceInfo = await selectNetworkSlicesForUEConfigurationUpdate({
