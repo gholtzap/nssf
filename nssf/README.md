@@ -42,11 +42,11 @@ My testing framework of choice is Mocha.
 - Network Slice Selection endpoint skeleton
 - Network Slice Selection for UE Registration
 - Network Slice Selection for PDU Session Establishment
+- Network Slice Selection for UE Configuration Update
 
 ## NOT IMPLEMENTED FEATURES
 
 ### Core Network Slice Selection
-- Network Slice Selection for UE Configuration Update
 - Allowed NSSAI determination based on subscription and policy
 - Configured NSSAI determination
 - Rejected NSSAI handling (in PLMN and in TA)

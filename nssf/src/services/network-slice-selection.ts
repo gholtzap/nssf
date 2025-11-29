@@ -6,6 +6,7 @@ import {
   ConfiguredSnssai,
   SliceInfoForRegistration,
   SliceInfoForPDUSession,
+  SliceInfoForUEConfigurationUpdate,
   RoamingIndication
 } from '../types/nnssf-nsselection-types';
 import { Snssai, PlmnId, Tai, AccessType } from '../types/common-types';
@@ -19,6 +20,12 @@ type NetworkSliceSelectionInput = {
 
 type PduSessionSelectionInput = {
   sliceInfoForPDUSession: SliceInfoForPDUSession;
+  homePlmnId?: PlmnId;
+  tai?: Tai;
+};
+
+type UeConfigurationUpdateInput = {
+  sliceInfoForUEConfigurationUpdate: SliceInfoForUEConfigurationUpdate;
   homePlmnId?: PlmnId;
   tai?: Tai;
 };
@@ -184,5 +191,94 @@ export const selectNetworkSlicesForPDUSession = async (
 
   return {
     allowedNssaiList: [allowedNssai]
+  };
+};
+
+export const selectNetworkSlicesForUEConfigurationUpdate = async (
+  input: UeConfigurationUpdateInput
+): Promise<AuthorizedNetworkSliceInfo> => {
+  const { sliceInfoForUEConfigurationUpdate, homePlmnId, tai } = input;
+
+  const slicesCollection = getCollection<SliceConfiguration>('slices');
+
+  const allowedNssaiList: AllowedNssai[] = [];
+  const configuredNssai: ConfiguredSnssai[] = [];
+  const rejectedNssaiInPlmn: Snssai[] = [];
+  const rejectedNssaiInTa: Snssai[] = [];
+
+  const subscribedSnssais = sliceInfoForUEConfigurationUpdate.subscribedNssai || [];
+  const requestedNssais = sliceInfoForUEConfigurationUpdate.requestedNssai || [];
+  const rejectedNssaiRa = sliceInfoForUEConfigurationUpdate.rejectedNssaiRa || [];
+
+  const availableSlices = await slicesCollection.find({}).toArray();
+
+  const processedSnssais: Snssai[] = [];
+
+  const snssaisToCheck = requestedNssais.length > 0 ? requestedNssais :
+                         subscribedSnssais.map(s => s.subscribedSnssai);
+
+  for (const snssai of snssaisToCheck) {
+    if (rejectedNssaiRa.some(rejected => snssaiMatches(rejected, snssai))) {
+      rejectedNssaiInPlmn.push(snssai);
+      continue;
+    }
+
+    const isSubscribed = subscribedSnssais.some(s => snssaiMatches(s.subscribedSnssai, snssai));
+
+    if (!isSubscribed && requestedNssais.length > 0) {
+      rejectedNssaiInPlmn.push(snssai);
+      continue;
+    }
+
+    const availableSlice = availableSlices.find((slice: SliceConfiguration) =>
+      snssaiMatches(slice.snssai, snssai)
+    );
+
+    if (!availableSlice) {
+      rejectedNssaiInPlmn.push(snssai);
+      continue;
+    }
+
+    if (homePlmnId && !plmnMatches(availableSlice.plmnId, homePlmnId)) {
+      rejectedNssaiInPlmn.push(snssai);
+      continue;
+    }
+
+    if (!isSliceAvailableInTai(availableSlice, tai)) {
+      rejectedNssaiInTa.push(snssai);
+      continue;
+    }
+
+    processedSnssais.push(snssai);
+  }
+
+  if (processedSnssais.length > 0) {
+    const allowedSnssaiList: AllowedSnssai[] = processedSnssais.map(snssai => ({
+      allowedSnssai: snssai
+    }));
+
+    allowedNssaiList.push({
+      allowedSnssaiList,
+      accessType: AccessType.THREE_GPP_ACCESS
+    });
+  }
+
+  for (const subscribedSnssai of subscribedSnssais) {
+    const slice = availableSlices.find((s: SliceConfiguration) =>
+      snssaiMatches(s.snssai, subscribedSnssai.subscribedSnssai)
+    );
+
+    if (slice && isSliceAvailableInTai(slice, tai)) {
+      configuredNssai.push({
+        configuredSnssai: subscribedSnssai.subscribedSnssai
+      });
+    }
+  }
+
+  return {
+    allowedNssaiList: allowedNssaiList.length > 0 ? allowedNssaiList : undefined,
+    configuredNssai: configuredNssai.length > 0 ? configuredNssai : undefined,
+    rejectedNssaiInPlmn: rejectedNssaiInPlmn.length > 0 ? rejectedNssaiInPlmn : undefined,
+    rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined
   };
 };

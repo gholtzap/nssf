@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { AuthorizedNetworkSliceInfo, SliceInfoForRegistration, SliceInfoForPDUSession, SliceInfoForUEConfigurationUpdate } from '../types/nnssf-nsselection-types';
 import { NFType, PlmnId, Tai, SupportedFeatures } from '../types/common-types';
-import { selectNetworkSlicesForRegistration, selectNetworkSlicesForPDUSession } from '../services/network-slice-selection';
+import { selectNetworkSlicesForRegistration, selectNetworkSlicesForPDUSession, selectNetworkSlicesForUEConfigurationUpdate } from '../services/network-slice-selection';
 
 const router = Router();
 
@@ -46,10 +46,15 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
         tai
       });
     } else if (sliceInfoRequestForUeCuRaw) {
-      authorizedNetworkSliceInfo = {
-        allowedNssaiList: [],
-        configuredNssai: []
-      };
+      const sliceInfoRequestForUeCu: SliceInfoForUEConfigurationUpdate = JSON.parse(sliceInfoRequestForUeCuRaw);
+      const homePlmnId: PlmnId | undefined = homePlmnIdRaw ? JSON.parse(homePlmnIdRaw) : undefined;
+      const tai: Tai | undefined = taiRaw ? JSON.parse(taiRaw) : undefined;
+
+      authorizedNetworkSliceInfo = await selectNetworkSlicesForUEConfigurationUpdate({
+        sliceInfoForUEConfigurationUpdate: sliceInfoRequestForUeCu,
+        homePlmnId,
+        tai
+      });
     } else {
       return res.status(400).json({
         error: 'Bad Request',
