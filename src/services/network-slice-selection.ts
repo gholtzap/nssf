@@ -13,6 +13,7 @@ import {
 import { Snssai, PlmnId, Tai, AccessType } from '../types/common-types';
 import { SliceConfiguration, NsiConfiguration } from '../types/db-types';
 import { getSubscriptionBySupi } from './subscription';
+import { performAmfSelection } from './amf-selection';
 
 type NetworkSliceSelectionInput = {
   sliceInfoForRegistration: SliceInfoForRegistration;
@@ -186,12 +187,32 @@ export const selectNetworkSlicesForRegistration = async (
     }
   }
 
-  return {
+  const result: AuthorizedNetworkSliceInfo = {
     allowedNssaiList: allowedNssaiList.length > 0 ? allowedNssaiList : undefined,
     configuredNssai: configuredNssai.length > 0 ? configuredNssai : undefined,
     rejectedNssaiInPlmn: rejectedNssaiInPlmn.length > 0 ? rejectedNssaiInPlmn : undefined,
     rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined
   };
+
+  if (processedSnssais.length === 0 && requestedNssais.length > 0) {
+    const amfSelectionResult = await performAmfSelection({
+      targetSnssais: requestedNssais,
+      plmnId: homePlmnId,
+      tai
+    });
+
+    if (amfSelectionResult) {
+      result.targetAmfSet = amfSelectionResult.targetAmfSet;
+      result.targetAmfServiceSet = amfSelectionResult.targetAmfServiceSet;
+      result.candidateAmfList = amfSelectionResult.candidateAmfList?.map(c => c.nfInstanceId);
+      result.nrfAmfSet = amfSelectionResult.nrfAmfSet;
+      result.nrfAmfSetNfMgtUri = amfSelectionResult.nrfAmfSetNfMgtUri;
+      result.nrfAmfSetAccessTokenUri = amfSelectionResult.nrfAmfSetAccessTokenUri;
+      result.nrfOauth2Required = amfSelectionResult.nrfOauth2Required;
+    }
+  }
+
+  return result;
 };
 
 export const selectNetworkSlicesForPDUSession = async (

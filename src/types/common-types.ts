@@ -25,6 +25,11 @@ export type NsSrg = string;
 
 export type NsagId = number;
 
+export type Guami = {
+  plmnId: PlmnId;
+  amfId: string;
+};
+
 export enum AccessType {
   THREE_GPP_ACCESS = '3GPP_ACCESS',
   NON_3GPP_ACCESS = 'NON_3GPP_ACCESS'

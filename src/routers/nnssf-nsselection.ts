@@ -77,7 +77,13 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
       });
     }
 
-    res.status(200).json(authorizedNetworkSliceInfo);
+    if (authorizedNetworkSliceInfo.targetAmfSet && authorizedNetworkSliceInfo.nrfAmfSet) {
+      const location = authorizedNetworkSliceInfo.nrfAmfSetNfMgtUri || authorizedNetworkSliceInfo.nrfAmfSet;
+
+      res.status(307).header('Location', location).json(authorizedNetworkSliceInfo);
+    } else {
+      res.status(200).json(authorizedNetworkSliceInfo);
+    }
   } catch (error) {
     console.error('Error in network-slice-information endpoint:', error);
     res.status(500).json({

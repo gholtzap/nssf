@@ -50,6 +50,11 @@ My testing framework of choice is Mocha.
 - NSI information provisioning (NRF URIs, NSI IDs)
 - Per-NSI NRF endpoint configuration
 - NSI-specific OAuth2 requirements
+- Target AMF Set selection
+- Target AMF Service Set selection
+- Candidate AMF list generation
+- AMF Set NRF discovery endpoint selection
+- Redirection responses (307/308) with NRF information
 
 ## NOT IMPLEMENTED FEATURES
 
@@ -65,13 +70,6 @@ My testing framework of choice is Mocha.
 - Mapped home S-NSSAI handling
 - S-NSSAI mapping request processing
 - NSSAI mapping configuration storage
-
-### AMF Selection & Redirection
-- Target AMF Set selection
-- Target AMF Service Set selection
-- Candidate AMF list generation
-- AMF Set NRF discovery endpoint selection
-- Redirection responses (307/308) with NRF information
 
 ### NRF Integration
 - NRF discovery for AMF instances
