@@ -37,6 +37,14 @@ import {
   updateSubscription,
   deleteSubscription
 } from '../services/subscription';
+import {
+  getAllPolicies,
+  getPoliciesBySnssai,
+  getPolicyById,
+  createPolicy,
+  updatePolicy,
+  deletePolicy
+} from '../services/policy-configuration';
 import { handleError } from '../utils/error-handler';
 import { createProblemDetails } from '../types/problem-details-types';
 
@@ -537,6 +545,111 @@ router.delete('/subscriptions/:supi', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error deleting subscription:', error);
     res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/policies', async (req: Request, res: Response) => {
+  try {
+    const policies = await getAllPolicies();
+    res.json(policies);
+  } catch (error) {
+    handleError(error, res, 'GET /policies');
+  }
+});
+
+router.get('/policies/:policyId', async (req: Request, res: Response) => {
+  try {
+    const policyId = req.params.policyId;
+    const policy = await getPolicyById(policyId);
+
+    if (!policy) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'Policy not found'
+      ));
+    }
+
+    res.json(policy);
+  } catch (error) {
+    handleError(error, res, 'GET /policies/:policyId');
+  }
+});
+
+router.get('/policies/snssai/:sst/:sd?', async (req: Request, res: Response) => {
+  try {
+    const sst = parseInt(req.params.sst);
+    const sd = req.params.sd;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!plmnIdRaw) {
+      return res.status(400).json(createProblemDetails(
+        400,
+        'Bad Request',
+        'plmnId query parameter is required'
+      ));
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    const snssai = { sst, sd };
+
+    const policies = await getPoliciesBySnssai(snssai, plmnId);
+    res.json(policies);
+  } catch (error) {
+    handleError(error, res, 'GET /policies/snssai/:sst/:sd');
+  }
+});
+
+router.post('/policies', async (req: Request, res: Response) => {
+  try {
+    await createPolicy(req.body);
+    res.status(201).json({ message: 'Policy created successfully' });
+  } catch (error: any) {
+    if (error.message?.includes('already exists')) {
+      return res.status(409).json(createProblemDetails(
+        409,
+        'Conflict',
+        'Policy already exists',
+        error.message
+      ));
+    }
+    handleError(error, res, 'POST /policies');
+  }
+});
+
+router.put('/policies/:policyId', async (req: Request, res: Response) => {
+  try {
+    const policyId = req.params.policyId;
+    await updatePolicy(policyId, req.body);
+    res.json({ message: 'Policy updated successfully' });
+  } catch (error: any) {
+    if (error.message?.includes('not found')) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'Policy not found',
+        error.message
+      ));
+    }
+    handleError(error, res, 'PUT /policies/:policyId');
+  }
+});
+
+router.delete('/policies/:policyId', async (req: Request, res: Response) => {
+  try {
+    const policyId = req.params.policyId;
+    await deletePolicy(policyId);
+    res.json({ message: 'Policy deleted successfully' });
+  } catch (error: any) {
+    if (error.message?.includes('not found')) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'Policy not found',
+        error.message
+      ));
+    }
+    handleError(error, res, 'DELETE /policies/:policyId');
   }
 });
 

@@ -14,6 +14,7 @@ import { Snssai, PlmnId, Tai, AccessType } from '../types/common-types';
 import { SliceConfiguration, NsiConfiguration } from '../types/db-types';
 import { getSubscriptionBySupi } from './subscription';
 import { performAmfSelection } from './amf-selection';
+import { determineAllowedNssai } from './allowed-nssai';
 
 type NetworkSliceSelectionInput = {
   sliceInfoForRegistration: SliceInfoForRegistration;
@@ -170,6 +171,19 @@ export const selectNetworkSlicesForRegistration = async (
       continue;
     }
 
+    const policyResult = await determineAllowedNssai({
+      snssai,
+      plmnId: homePlmnId,
+      tai,
+      subscription,
+      slice: availableSlice
+    });
+
+    if (!policyResult.allowed) {
+      rejectedNssaiInPlmn.push(snssai);
+      continue;
+    }
+
     processedSnssais.push(snssai);
   }
 
@@ -299,6 +313,20 @@ export const selectNetworkSlicesForPDUSession = async (
     };
   }
 
+  const policyResult = await determineAllowedNssai({
+    snssai: targetSnssai,
+    plmnId: homePlmnId,
+    tai,
+    subscription,
+    slice: availableSlice
+  });
+
+  if (!policyResult.allowed) {
+    return {
+      rejectedNssaiInPlmn: [requestedSnssai]
+    };
+  }
+
   const nsiInformationList = await selectNsiForSnssai(requestedSnssai, homePlmnId, tai);
 
   const allowedSnssai: AllowedSnssai = {
@@ -396,6 +424,19 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
 
     if (!isSliceAvailableInTai(availableSlice, tai)) {
       rejectedNssaiInTa.push(snssai);
+      continue;
+    }
+
+    const policyResult = await determineAllowedNssai({
+      snssai,
+      plmnId: homePlmnId,
+      tai,
+      subscription,
+      slice: availableSlice
+    });
+
+    if (!policyResult.allowed) {
+      rejectedNssaiInPlmn.push(snssai);
       continue;
     }
 

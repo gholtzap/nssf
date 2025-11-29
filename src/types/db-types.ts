@@ -30,3 +30,26 @@ export type NsiConfiguration = {
   priority?: number;
   loadLevel?: number;
 };
+
+export type TimeWindow = {
+  startTime: string;
+  endTime: string;
+  daysOfWeek?: number[];
+};
+
+export type SlicePolicy = {
+  policyId: string;
+  snssai: Snssai;
+  plmnId: PlmnId;
+  maxUesPerSlice?: number;
+  maxSessionsPerUe?: number;
+  priorityLevel?: number;
+  allowedTimeWindows?: TimeWindow[];
+  deniedTimeWindows?: TimeWindow[];
+  minPriorityLevel?: number;
+  maxLoadLevel?: number;
+  requiredSubscriptionTier?: string;
+  allowedTaiList?: Tai[];
+  deniedTaiList?: Tai[];
+  enabled: boolean;
+};

@@ -83,6 +83,14 @@ My testing framework of choice is Mocha.
 - `PUT /nssf-config/v1/subscriptions/:supi` - Update subscription
 - `DELETE /nssf-config/v1/subscriptions/:supi` - Delete subscription
 
+#### Policy Management
+- `GET /nssf-config/v1/policies` - Get all slice policies
+- `GET /nssf-config/v1/policies/:policyId` - Get specific policy configuration
+- `GET /nssf-config/v1/policies/snssai/:sst/:sd?` - Get policies for specific S-NSSAI
+- `POST /nssf-config/v1/policies` - Create policy configuration
+- `PUT /nssf-config/v1/policies/:policyId` - Update policy configuration
+- `DELETE /nssf-config/v1/policies/:policyId` - Delete policy configuration
+
 ## IMPLEMENTED FEATURES
 
 - Basic server setup with Express
@@ -130,11 +138,17 @@ My testing framework of choice is Mocha.
 - NRF OAuth2 token acquisition error handling
 - Malformed request validation
 - Standardized error responses across all endpoints
+- Allowed NSSAI determination based on subscription and policy
+- Policy-based slice access control
+- Time-based slice access policies
+- Location-based (TAI) slice access policies
+- Load-based slice access policies
+- Policy configuration management
+- Policy evaluation engine
 
 ## NOT IMPLEMENTED FEATURES
 
 ### Core Network Slice Selection
-- Allowed NSSAI determination based on subscription and policy
 - Configured NSSAI determination
 - Rejected NSSAI handling (in PLMN and in TA)
 - Requested NSSAI validation and processing
