@@ -41,11 +41,11 @@ My testing framework of choice is Mocha.
 - Health check endpoint
 - Network Slice Selection endpoint skeleton
 - Network Slice Selection for UE Registration
+- Network Slice Selection for PDU Session Establishment
 
 ## NOT IMPLEMENTED FEATURES
 
 ### Core Network Slice Selection
-- Network Slice Selection for PDU Session Establishment
 - Network Slice Selection for UE Configuration Update
 - Allowed NSSAI determination based on subscription and policy
 - Configured NSSAI determination

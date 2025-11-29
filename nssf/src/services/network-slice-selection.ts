@@ -4,13 +4,21 @@ import {
   AllowedNssai,
   AllowedSnssai,
   ConfiguredSnssai,
-  SliceInfoForRegistration
+  SliceInfoForRegistration,
+  SliceInfoForPDUSession,
+  RoamingIndication
 } from '../types/nnssf-nsselection-types';
 import { Snssai, PlmnId, Tai, AccessType } from '../types/common-types';
 import { SliceConfiguration, UeSubscription } from '../types/db-types';
 
 type NetworkSliceSelectionInput = {
   sliceInfoForRegistration: SliceInfoForRegistration;
+  homePlmnId?: PlmnId;
+  tai?: Tai;
+};
+
+type PduSessionSelectionInput = {
+  sliceInfoForPDUSession: SliceInfoForPDUSession;
   homePlmnId?: PlmnId;
   tai?: Tai;
 };
@@ -118,5 +126,63 @@ export const selectNetworkSlicesForRegistration = async (
     configuredNssai: configuredNssai.length > 0 ? configuredNssai : undefined,
     rejectedNssaiInPlmn: rejectedNssaiInPlmn.length > 0 ? rejectedNssaiInPlmn : undefined,
     rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined
+  };
+};
+
+export const selectNetworkSlicesForPDUSession = async (
+  input: PduSessionSelectionInput
+): Promise<AuthorizedNetworkSliceInfo> => {
+  const { sliceInfoForPDUSession, homePlmnId, tai } = input;
+
+  const slicesCollection = getCollection<SliceConfiguration>('slices');
+
+  const requestedSnssai = sliceInfoForPDUSession.sNssai;
+  const roamingIndication = sliceInfoForPDUSession.roamingIndication;
+  const homeSnssai = sliceInfoForPDUSession.homeSnssai;
+
+  const availableSlices = await slicesCollection.find({}).toArray();
+
+  let targetSnssai = requestedSnssai;
+  if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && homeSnssai) {
+    targetSnssai = homeSnssai;
+  }
+
+  const availableSlice = availableSlices.find((slice: SliceConfiguration) =>
+    snssaiMatches(slice.snssai, targetSnssai)
+  );
+
+  if (!availableSlice) {
+    return {
+      rejectedNssaiInPlmn: [requestedSnssai]
+    };
+  }
+
+  if (homePlmnId && !plmnMatches(availableSlice.plmnId, homePlmnId)) {
+    return {
+      rejectedNssaiInPlmn: [requestedSnssai]
+    };
+  }
+
+  if (!isSliceAvailableInTai(availableSlice, tai)) {
+    return {
+      rejectedNssaiInTa: [requestedSnssai]
+    };
+  }
+
+  const allowedSnssai: AllowedSnssai = {
+    allowedSnssai: requestedSnssai
+  };
+
+  if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && homeSnssai) {
+    allowedSnssai.mappedHomeSnssai = homeSnssai;
+  }
+
+  const allowedNssai: AllowedNssai = {
+    allowedSnssaiList: [allowedSnssai],
+    accessType: AccessType.THREE_GPP_ACCESS
+  };
+
+  return {
+    allowedNssaiList: [allowedNssai]
   };
 };
