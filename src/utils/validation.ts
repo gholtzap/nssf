@@ -101,3 +101,48 @@ export const validateRequiredParam = (
   }
   return null;
 };
+
+export const extractHomePlmnFromSupi = (supi: string): PlmnId | null => {
+  if (!supi || typeof supi !== 'string') {
+    return null;
+  }
+
+  const imsiMatch = supi.match(/^imsi-(\d{5,6})/);
+  if (!imsiMatch) {
+    return null;
+  }
+
+  const plmnPart = imsiMatch[1];
+  const mcc = plmnPart.substring(0, 3);
+  const mnc = plmnPart.substring(3);
+
+  if (mnc.length < 2 || mnc.length > 3) {
+    return null;
+  }
+
+  return { mcc, mnc };
+};
+
+export const validateHomePlmnConsistency = (
+  supi: string,
+  providedHomePlmn: PlmnId | null
+): InvalidParam | null => {
+  const extractedPlmn = extractHomePlmnFromSupi(supi);
+
+  if (!extractedPlmn) {
+    return null;
+  }
+
+  if (!providedHomePlmn) {
+    return null;
+  }
+
+  if (extractedPlmn.mcc !== providedHomePlmn.mcc || extractedPlmn.mnc !== providedHomePlmn.mnc) {
+    return {
+      param: 'home-plmn-id',
+      reason: `does not match PLMN extracted from SUPI (expected ${extractedPlmn.mcc}-${extractedPlmn.mnc})`
+    };
+  }
+
+  return null;
+};

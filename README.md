@@ -168,11 +168,11 @@ My testing framework of choice is Mocha.
 - Home-routed roaming slice selection
 - Local breakout roaming slice selection
 - VPLMN/HPLMN S-NSSAI mapping for roaming
+- Home PLMN identification and handling
 
 ## NOT IMPLEMENTED FEATURES
 
 ### Geographical & Topology Support
-- Home PLMN identification and handling
 
 ### Subscription & Policy Management
 - Default configured S-NSSAI handling

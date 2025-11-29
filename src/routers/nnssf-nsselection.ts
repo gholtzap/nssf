@@ -3,7 +3,7 @@ import { AuthorizedNetworkSliceInfo, SliceInfoForRegistration, SliceInfoForPDUSe
 import { NFType, PlmnId, Tai, SupportedFeatures } from '../types/common-types';
 import { selectNetworkSlicesForRegistration, selectNetworkSlicesForPDUSession, selectNetworkSlicesForUEConfigurationUpdate } from '../services/network-slice-selection';
 import { createProblemDetails, InvalidParam } from '../types/problem-details-types';
-import { validateRequiredParam, validatePlmnId, validateTai, validateSupi, parseJsonParam, validateSnssai } from '../utils/validation';
+import { validateRequiredParam, validatePlmnId, validateTai, validateSupi, parseJsonParam, validateSnssai, extractHomePlmnFromSupi, validateHomePlmnConsistency } from '../utils/validation';
 import { DatabaseError } from '../db/mongodb';
 import { NrfError } from '../utils/errors';
 import { validateRequestedNssai } from '../services/requested-nssai-validation';
@@ -33,15 +33,38 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
     const supiError = validateSupi(supi);
     if (supiError) invalidParams.push(supiError);
 
-    const homePlmnIdError = validateRequiredParam(homePlmnIdRaw, 'home-plmn-id');
-    if (homePlmnIdError) invalidParams.push(homePlmnIdError);
+    let homePlmnId: PlmnId | null = null;
 
-    const { value: homePlmnId, error: homePlmnIdParseError } = parseJsonParam<PlmnId>(homePlmnIdRaw, 'home-plmn-id');
-    if (homePlmnIdParseError) {
-      invalidParams.push(homePlmnIdParseError);
-    } else if (homePlmnId) {
-      const plmnValidationError = validatePlmnId(homePlmnId, 'home-plmn-id');
-      if (plmnValidationError) invalidParams.push(plmnValidationError);
+    if (homePlmnIdRaw) {
+      const { value: parsedHomePlmnId, error: homePlmnIdParseError } = parseJsonParam<PlmnId>(homePlmnIdRaw, 'home-plmn-id');
+      if (homePlmnIdParseError) {
+        invalidParams.push(homePlmnIdParseError);
+      } else if (parsedHomePlmnId) {
+        const plmnValidationError = validatePlmnId(parsedHomePlmnId, 'home-plmn-id');
+        if (plmnValidationError) {
+          invalidParams.push(plmnValidationError);
+        } else {
+          homePlmnId = parsedHomePlmnId;
+        }
+      }
+    }
+
+    if (supi && !homePlmnId) {
+      homePlmnId = extractHomePlmnFromSupi(supi);
+    }
+
+    if (supi && homePlmnIdRaw && homePlmnId) {
+      const consistencyError = validateHomePlmnConsistency(supi, homePlmnId);
+      if (consistencyError) {
+        invalidParams.push(consistencyError);
+      }
+    }
+
+    if (!homePlmnId) {
+      invalidParams.push({
+        param: 'home-plmn-id',
+        reason: 'is required and could not be extracted from SUPI'
+      });
     }
 
     let tai: Tai | undefined = undefined;
