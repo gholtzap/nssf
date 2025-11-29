@@ -53,3 +53,12 @@ export type SlicePolicy = {
   deniedTaiList?: Tai[];
   enabled: boolean;
 };
+
+export type SnssaiMapping = {
+  mappingId: string;
+  servingPlmnId: PlmnId;
+  homePlmnId: PlmnId;
+  servingSnssai: Snssai;
+  homeSnssai: Snssai;
+  validityArea?: Tai[];
+};

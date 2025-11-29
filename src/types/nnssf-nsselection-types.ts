@@ -66,6 +66,7 @@ export type AuthorizedNetworkSliceInfo = {
   targetAmfServiceSet?: NfServiceSetId;
   targetNssai?: Snssai[];
   nsagInfos?: NsagInfo[];
+  mappingOfNssai?: MappingOfSnssai[];
 };
 
 export type SubscribedSnssai = {

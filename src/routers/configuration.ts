@@ -45,6 +45,13 @@ import {
   updatePolicy,
   deletePolicy
 } from '../services/policy-configuration';
+import {
+  getAllSnssaiMappings,
+  getSnssaiMappingById,
+  createSnssaiMapping,
+  updateSnssaiMapping,
+  deleteSnssaiMapping
+} from '../services/snssai-mapping';
 import { handleError } from '../utils/error-handler';
 import { createProblemDetails } from '../types/problem-details-types';
 
@@ -650,6 +657,89 @@ router.delete('/policies/:policyId', async (req: Request, res: Response) => {
       ));
     }
     handleError(error, res, 'DELETE /policies/:policyId');
+  }
+});
+
+router.get('/snssai-mappings', async (req: Request, res: Response) => {
+  try {
+    const mappings = await getAllSnssaiMappings();
+    res.json(mappings);
+  } catch (error) {
+    handleError(error, res, 'GET /snssai-mappings');
+  }
+});
+
+router.get('/snssai-mappings/:mappingId', async (req: Request, res: Response) => {
+  try {
+    const mappingId = req.params.mappingId;
+    const mapping = await getSnssaiMappingById(mappingId);
+
+    if (!mapping) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'S-NSSAI mapping not found'
+      ));
+    }
+
+    res.json(mapping);
+  } catch (error) {
+    handleError(error, res, 'GET /snssai-mappings/:mappingId');
+  }
+});
+
+router.post('/snssai-mappings', async (req: Request, res: Response) => {
+  try {
+    const mapping = await createSnssaiMapping(req.body);
+    res.status(201).json(mapping);
+  } catch (error: any) {
+    if (error.message?.includes('already exists')) {
+      return res.status(409).json(createProblemDetails(
+        409,
+        'Conflict',
+        'S-NSSAI mapping already exists',
+        error.message
+      ));
+    }
+    handleError(error, res, 'POST /snssai-mappings');
+  }
+});
+
+router.put('/snssai-mappings/:mappingId', async (req: Request, res: Response) => {
+  try {
+    const mappingId = req.params.mappingId;
+    const mapping = await updateSnssaiMapping(mappingId, req.body);
+
+    if (!mapping) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'S-NSSAI mapping not found'
+      ));
+    }
+
+    res.json(mapping);
+  } catch (error) {
+    handleError(error, res, 'PUT /snssai-mappings/:mappingId');
+  }
+});
+
+router.delete('/snssai-mappings/:mappingId', async (req: Request, res: Response) => {
+  try {
+    const mappingId = req.params.mappingId;
+    const deleted = await deleteSnssaiMapping(mappingId);
+
+    if (!deleted) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'S-NSSAI mapping not found'
+      ));
+    }
+
+    res.json({ message: 'S-NSSAI mapping deleted successfully' });
+  } catch (error) {
+    handleError(error, res, 'DELETE /snssai-mappings/:mappingId');
   }
 });
 

@@ -91,6 +91,13 @@ My testing framework of choice is Mocha.
 - `PUT /nssf-config/v1/policies/:policyId` - Update policy configuration
 - `DELETE /nssf-config/v1/policies/:policyId` - Delete policy configuration
 
+#### S-NSSAI Mapping Management
+- `GET /nssf-config/v1/snssai-mappings` - Get all S-NSSAI mappings
+- `GET /nssf-config/v1/snssai-mappings/:mappingId` - Get specific S-NSSAI mapping
+- `POST /nssf-config/v1/snssai-mappings` - Create S-NSSAI mapping
+- `PUT /nssf-config/v1/snssai-mappings/:mappingId` - Update S-NSSAI mapping
+- `DELETE /nssf-config/v1/snssai-mappings/:mappingId` - Delete S-NSSAI mapping
+
 ## IMPLEMENTED FEATURES
 
 - Basic server setup with Express
@@ -145,19 +152,18 @@ My testing framework of choice is Mocha.
 - Load-based slice access policies
 - Policy configuration management
 - Policy evaluation engine
+- S-NSSAI mapping between serving and home network
+- Mapped home S-NSSAI handling
+- S-NSSAI mapping request processing
+- S-NSSAI mapping configuration storage
+- S-NSSAI mapping configuration management API
+- Configured NSSAI determination with mapping support
 
 ## NOT IMPLEMENTED FEATURES
 
 ### Core Network Slice Selection
-- Configured NSSAI determination
 - Rejected NSSAI handling (in PLMN and in TA)
 - Requested NSSAI validation and processing
-
-### S-NSSAI Mapping & Translation
-- S-NSSAI mapping between serving and home network
-- Mapped home S-NSSAI handling
-- S-NSSAI mapping request processing
-- NSSAI mapping configuration storage
 
 ### Geographical & Topology Support
 - Tracking Area (TAI) based slice availability

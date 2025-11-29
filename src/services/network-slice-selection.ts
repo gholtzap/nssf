@@ -8,13 +8,15 @@ import {
   SliceInfoForPDUSession,
   SliceInfoForUEConfigurationUpdate,
   RoamingIndication,
-  NsiInformation
+  NsiInformation,
+  MappingOfSnssai
 } from '../types/nnssf-nsselection-types';
 import { Snssai, PlmnId, Tai, AccessType } from '../types/common-types';
 import { SliceConfiguration, NsiConfiguration } from '../types/db-types';
 import { getSubscriptionBySupi } from './subscription';
 import { performAmfSelection } from './amf-selection';
 import { determineAllowedNssai } from './allowed-nssai';
+import { processMappingRequests, getMappingForSnssai, getReverseMappingForSnssai } from './snssai-mapping';
 
 type NetworkSliceSelectionInput = {
   sliceInfoForRegistration: SliceInfoForRegistration;
@@ -115,6 +117,7 @@ export const selectNetworkSlicesForRegistration = async (
     const configuredNssai: ConfiguredSnssai[] = [];
     const rejectedNssaiInPlmn: Snssai[] = [];
     const rejectedNssaiInTa: Snssai[] = [];
+    let mappingOfNssai: MappingOfSnssai[] | undefined;
 
     const subscription = await getSubscriptionBySupi(supi, homePlmnId);
 
@@ -123,6 +126,17 @@ export const selectNetworkSlicesForRegistration = async (
       return {
         rejectedNssaiInPlmn: requestedNssais.length > 0 ? requestedNssais : undefined
       };
+    }
+
+    const servingPlmnId = subscription.plmnId;
+
+    if (sliceInfoForRegistration.requestMapping && sliceInfoForRegistration.sNssaiForMapping) {
+      mappingOfNssai = await processMappingRequests(
+        sliceInfoForRegistration.sNssaiForMapping,
+        servingPlmnId,
+        homePlmnId,
+        tai
+      );
     }
 
     const subscribedSnssais = subscription.subscribedSnssais;
@@ -215,9 +229,23 @@ export const selectNetworkSlicesForRegistration = async (
     );
 
     if (slice && isSliceAvailableInTai(slice, tai)) {
-      configuredNssai.push({
+      const configuredEntry: ConfiguredSnssai = {
         configuredSnssai: subscribedSnssai.subscribedSnssai
-      });
+      };
+
+      if (!plmnMatches(servingPlmnId, homePlmnId)) {
+        const homeSnssai = await getMappingForSnssai(
+          subscribedSnssai.subscribedSnssai,
+          servingPlmnId,
+          homePlmnId,
+          tai
+        );
+        if (homeSnssai) {
+          configuredEntry.mappedHomeSnssai = homeSnssai;
+        }
+      }
+
+      configuredNssai.push(configuredEntry);
     }
   }
 
@@ -227,6 +255,10 @@ export const selectNetworkSlicesForRegistration = async (
       rejectedNssaiInPlmn: rejectedNssaiInPlmn.length > 0 ? rejectedNssaiInPlmn : undefined,
       rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined
     };
+
+    if (mappingOfNssai && mappingOfNssai.length > 0) {
+      result.mappingOfNssai = mappingOfNssai;
+    }
 
     if (processedSnssais.length === 0 && requestedNssais.length > 0) {
       const amfSelectionResult = await performAmfSelection({
@@ -365,6 +397,7 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
     const configuredNssai: ConfiguredSnssai[] = [];
     const rejectedNssaiInPlmn: Snssai[] = [];
     const rejectedNssaiInTa: Snssai[] = [];
+    let mappingOfNssai: MappingOfSnssai[] | undefined;
 
   const subscription = await getSubscriptionBySupi(supi, homePlmnId);
 
@@ -374,6 +407,8 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
       rejectedNssaiInPlmn: requestedNssais.length > 0 ? requestedNssais : undefined
     };
   }
+
+  const servingPlmnId = subscription.plmnId;
 
   const subscribedSnssais = subscription.subscribedSnssais;
   const requestedNssais = sliceInfoForUEConfigurationUpdate.requestedNssai || [];
@@ -471,18 +506,42 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
     );
 
     if (slice && isSliceAvailableInTai(slice, tai)) {
-      configuredNssai.push({
+      const configuredEntry: ConfiguredSnssai = {
         configuredSnssai: subscribedSnssai.subscribedSnssai
-      });
+      };
+
+      if (!plmnMatches(servingPlmnId, homePlmnId)) {
+        const homeSnssai = await getMappingForSnssai(
+          subscribedSnssai.subscribedSnssai,
+          servingPlmnId,
+          homePlmnId,
+          tai
+        );
+        if (homeSnssai) {
+          configuredEntry.mappedHomeSnssai = homeSnssai;
+        }
+      }
+
+      configuredNssai.push(configuredEntry);
     }
   }
 
-    return {
+  if (sliceInfoForUEConfigurationUpdate.mappingOfNssai) {
+    mappingOfNssai = sliceInfoForUEConfigurationUpdate.mappingOfNssai;
+  }
+
+    const result: AuthorizedNetworkSliceInfo = {
       allowedNssaiList: allowedNssaiList.length > 0 ? allowedNssaiList : undefined,
       configuredNssai: configuredNssai.length > 0 ? configuredNssai : undefined,
       rejectedNssaiInPlmn: rejectedNssaiInPlmn.length > 0 ? rejectedNssaiInPlmn : undefined,
       rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined
     };
+
+    if (mappingOfNssai && mappingOfNssai.length > 0) {
+      result.mappingOfNssai = mappingOfNssai;
+    }
+
+    return result;
   } catch (error) {
     console.error('Error in selectNetworkSlicesForUEConfigurationUpdate:', error);
     const dbError = handleDatabaseError(error);
