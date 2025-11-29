@@ -33,6 +33,13 @@ My testing framework of choice is Mocha.
 
 - `GET /nnssf-nsselection/v2/network-slice-information` - Retrieve the Network Slice Selection Information
 
+### Nnssf_NSSAIAvailability Service
+
+- `POST /nnssf-nssaiavailability/v1/subscriptions` - Subscribe to NSSAI availability notifications
+- `GET /nnssf-nssaiavailability/v1/subscriptions/:subscriptionId` - Get NSSAI availability subscription
+- `PATCH /nnssf-nssaiavailability/v1/subscriptions/:subscriptionId` - Update NSSAI availability subscription
+- `DELETE /nnssf-nssaiavailability/v1/subscriptions/:subscriptionId` - Unsubscribe from NSSAI availability notifications
+
 ### Configuration Management API
 
 #### Slice Configuration
@@ -109,6 +116,11 @@ My testing framework of choice is Mocha.
 - NRF OAuth2 token endpoint integration
 - NRF NFManagement service integration
 - Per-service OAuth2 requirement handling
+- NSSAI availability subscription (POST)
+- NSSAI availability unsubscribe (DELETE)
+- NSSAI availability notification
+- NSSAI availability update (PATCH)
+- TA-based NSSAI availability management
 
 ## NOT IMPLEMENTED FEATURES
 
@@ -154,13 +166,6 @@ My testing framework of choice is Mocha.
 - Feature negotiation between NF consumer and NSSF
 - Required features for target slice instances
 - NF capability-based slice selection
-
-### Nnssf_NSSAIAvailability Service
-- NSSAI availability subscription (POST)
-- NSSAI availability unsubscribe (DELETE)
-- NSSAI availability notification
-- NSSAI availability update (PATCH)
-- TA-based NSSAI availability management
 
 ### Security & Authorization
 - OAuth2 client credentials flow

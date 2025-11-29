@@ -5,6 +5,7 @@ import express, { Request, Response } from 'express';
 import { initializeMongoDB } from './db/mongodb';
 import nsselectionRouter from './routers/nnssf-nsselection';
 import configurationRouter from './routers/configuration';
+import nssaiavailabilityRouter from './routers/nnssf-nssaiavailability';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,7 @@ app.get('/health', (req: Request, res: Response) => {
 
 app.use('/nnssf-nsselection/v2', nsselectionRouter);
 app.use('/nssf-config/v1', configurationRouter);
+app.use('/nnssf-nssaiavailability/v1', nssaiavailabilityRouter);
 
 const startServer = async () => {
   try {
