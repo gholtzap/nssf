@@ -1,4 +1,4 @@
-import { getCollection } from '../db/mongodb';
+import { getCollection, handleDatabaseError, DatabaseError } from '../db/mongodb';
 import {
   AuthorizedNetworkSliceInfo,
   AllowedNssai,
@@ -69,31 +69,37 @@ const selectNsiForSnssai = async (
   plmnId: PlmnId,
   tai?: Tai
 ): Promise<NsiInformation[]> => {
-  const nsiCollection = getCollection<NsiConfiguration>('nsi');
+  try {
+    const nsiCollection = getCollection<NsiConfiguration>('nsi');
 
-  const nsiConfigs = await nsiCollection.find({
-    'snssai.sst': snssai.sst,
-    'snssai.sd': snssai.sd,
-    'plmnId.mcc': plmnId.mcc,
-    'plmnId.mnc': plmnId.mnc
-  }).toArray();
+    const nsiConfigs = await nsiCollection.find({
+      'snssai.sst': snssai.sst,
+      'snssai.sd': snssai.sd,
+      'plmnId.mcc': plmnId.mcc,
+      'plmnId.mnc': plmnId.mnc
+    }).toArray();
 
-  const availableNsis = nsiConfigs.filter(nsi => isNsiAvailableInTai(nsi, tai));
+    const availableNsis = nsiConfigs.filter(nsi => isNsiAvailableInTai(nsi, tai));
 
-  availableNsis.sort((a, b) => {
-    if (a.priority !== b.priority) {
-      return (b.priority || 0) - (a.priority || 0);
-    }
-    return (a.loadLevel || 0) - (b.loadLevel || 0);
-  });
+    availableNsis.sort((a, b) => {
+      if (a.priority !== b.priority) {
+        return (b.priority || 0) - (a.priority || 0);
+      }
+      return (a.loadLevel || 0) - (b.loadLevel || 0);
+    });
 
-  return availableNsis.map(nsi => ({
-    nrfId: nsi.nrfId,
-    nsiId: nsi.nsiId,
-    nrfNfMgtUri: nsi.nrfNfMgtUri,
-    nrfAccessTokenUri: nsi.nrfAccessTokenUri,
-    nrfOauth2Required: nsi.nrfOauth2Required
-  }));
+    return availableNsis.map(nsi => ({
+      nrfId: nsi.nrfId,
+      nsiId: nsi.nsiId,
+      nrfNfMgtUri: nsi.nrfNfMgtUri,
+      nrfAccessTokenUri: nsi.nrfAccessTokenUri,
+      nrfOauth2Required: nsi.nrfOauth2Required
+    }));
+  } catch (error) {
+    console.error('Error selecting NSI for S-NSSAI:', error);
+    const dbError = handleDatabaseError(error);
+    throw dbError;
+  }
 };
 
 export const selectNetworkSlicesForRegistration = async (
@@ -101,27 +107,28 @@ export const selectNetworkSlicesForRegistration = async (
 ): Promise<AuthorizedNetworkSliceInfo> => {
   const { sliceInfoForRegistration, homePlmnId, supi, tai } = input;
 
-  const slicesCollection = getCollection<SliceConfiguration>('slices');
+  try {
+    const slicesCollection = getCollection<SliceConfiguration>('slices');
 
-  const allowedNssaiList: AllowedNssai[] = [];
-  const configuredNssai: ConfiguredSnssai[] = [];
-  const rejectedNssaiInPlmn: Snssai[] = [];
-  const rejectedNssaiInTa: Snssai[] = [];
+    const allowedNssaiList: AllowedNssai[] = [];
+    const configuredNssai: ConfiguredSnssai[] = [];
+    const rejectedNssaiInPlmn: Snssai[] = [];
+    const rejectedNssaiInTa: Snssai[] = [];
 
-  const subscription = await getSubscriptionBySupi(supi, homePlmnId);
+    const subscription = await getSubscriptionBySupi(supi, homePlmnId);
 
-  if (!subscription) {
+    if (!subscription) {
+      const requestedNssais = sliceInfoForRegistration.requestedNssai || [];
+      return {
+        rejectedNssaiInPlmn: requestedNssais.length > 0 ? requestedNssais : undefined
+      };
+    }
+
+    const subscribedSnssais = subscription.subscribedSnssais;
     const requestedNssais = sliceInfoForRegistration.requestedNssai || [];
-    return {
-      rejectedNssaiInPlmn: requestedNssais.length > 0 ? requestedNssais : undefined
-    };
-  }
+    const defaultConfiguredSnssaiInd = sliceInfoForRegistration.defaultConfiguredSnssaiInd;
 
-  const subscribedSnssais = subscription.subscribedSnssais;
-  const requestedNssais = sliceInfoForRegistration.requestedNssai || [];
-  const defaultConfiguredSnssaiInd = sliceInfoForRegistration.defaultConfiguredSnssaiInd;
-
-  const availableSlices = await slicesCollection.find({}).toArray();
+    const availableSlices = await slicesCollection.find({}).toArray();
 
   const processedSnssais: Snssai[] = [];
 
@@ -200,32 +207,37 @@ export const selectNetworkSlicesForRegistration = async (
     }
   }
 
-  const result: AuthorizedNetworkSliceInfo = {
-    allowedNssaiList: allowedNssaiList.length > 0 ? allowedNssaiList : undefined,
-    configuredNssai: configuredNssai.length > 0 ? configuredNssai : undefined,
-    rejectedNssaiInPlmn: rejectedNssaiInPlmn.length > 0 ? rejectedNssaiInPlmn : undefined,
-    rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined
-  };
+    const result: AuthorizedNetworkSliceInfo = {
+      allowedNssaiList: allowedNssaiList.length > 0 ? allowedNssaiList : undefined,
+      configuredNssai: configuredNssai.length > 0 ? configuredNssai : undefined,
+      rejectedNssaiInPlmn: rejectedNssaiInPlmn.length > 0 ? rejectedNssaiInPlmn : undefined,
+      rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined
+    };
 
-  if (processedSnssais.length === 0 && requestedNssais.length > 0) {
-    const amfSelectionResult = await performAmfSelection({
-      targetSnssais: requestedNssais,
-      plmnId: homePlmnId,
-      tai
-    });
+    if (processedSnssais.length === 0 && requestedNssais.length > 0) {
+      const amfSelectionResult = await performAmfSelection({
+        targetSnssais: requestedNssais,
+        plmnId: homePlmnId,
+        tai
+      });
 
-    if (amfSelectionResult) {
-      result.targetAmfSet = amfSelectionResult.targetAmfSet;
-      result.targetAmfServiceSet = amfSelectionResult.targetAmfServiceSet;
-      result.candidateAmfList = amfSelectionResult.candidateAmfList?.map(c => c.nfInstanceId);
-      result.nrfAmfSet = amfSelectionResult.nrfAmfSet;
-      result.nrfAmfSetNfMgtUri = amfSelectionResult.nrfAmfSetNfMgtUri;
-      result.nrfAmfSetAccessTokenUri = amfSelectionResult.nrfAmfSetAccessTokenUri;
-      result.nrfOauth2Required = amfSelectionResult.nrfOauth2Required;
+      if (amfSelectionResult) {
+        result.targetAmfSet = amfSelectionResult.targetAmfSet;
+        result.targetAmfServiceSet = amfSelectionResult.targetAmfServiceSet;
+        result.candidateAmfList = amfSelectionResult.candidateAmfList?.map(c => c.nfInstanceId);
+        result.nrfAmfSet = amfSelectionResult.nrfAmfSet;
+        result.nrfAmfSetNfMgtUri = amfSelectionResult.nrfAmfSetNfMgtUri;
+        result.nrfAmfSetAccessTokenUri = amfSelectionResult.nrfAmfSetAccessTokenUri;
+        result.nrfOauth2Required = amfSelectionResult.nrfOauth2Required;
+      }
     }
-  }
 
-  return result;
+    return result;
+  } catch (error) {
+    console.error('Error in selectNetworkSlicesForRegistration:', error);
+    const dbError = handleDatabaseError(error);
+    throw dbError;
+  }
 };
 
 export const selectNetworkSlicesForPDUSession = async (
@@ -233,13 +245,14 @@ export const selectNetworkSlicesForPDUSession = async (
 ): Promise<AuthorizedNetworkSliceInfo> => {
   const { sliceInfoForPDUSession, homePlmnId, supi, tai } = input;
 
-  const slicesCollection = getCollection<SliceConfiguration>('slices');
+  try {
+    const slicesCollection = getCollection<SliceConfiguration>('slices');
 
-  const requestedSnssai = sliceInfoForPDUSession.sNssai;
-  const roamingIndication = sliceInfoForPDUSession.roamingIndication;
-  const homeSnssai = sliceInfoForPDUSession.homeSnssai;
+    const requestedSnssai = sliceInfoForPDUSession.sNssai;
+    const roamingIndication = sliceInfoForPDUSession.roamingIndication;
+    const homeSnssai = sliceInfoForPDUSession.homeSnssai;
 
-  const subscription = await getSubscriptionBySupi(supi, homePlmnId);
+    const subscription = await getSubscriptionBySupi(supi, homePlmnId);
 
   if (!subscription) {
     return {
@@ -297,14 +310,19 @@ export const selectNetworkSlicesForPDUSession = async (
     allowedSnssai.mappedHomeSnssai = homeSnssai;
   }
 
-  const allowedNssai: AllowedNssai = {
-    allowedSnssaiList: [allowedSnssai],
-    accessType: AccessType.THREE_GPP_ACCESS
-  };
+    const allowedNssai: AllowedNssai = {
+      allowedSnssaiList: [allowedSnssai],
+      accessType: AccessType.THREE_GPP_ACCESS
+    };
 
-  return {
-    allowedNssaiList: [allowedNssai]
-  };
+    return {
+      allowedNssaiList: [allowedNssai]
+    };
+  } catch (error) {
+    console.error('Error in selectNetworkSlicesForPDUSession:', error);
+    const dbError = handleDatabaseError(error);
+    throw dbError;
+  }
 };
 
 export const selectNetworkSlicesForUEConfigurationUpdate = async (
@@ -312,12 +330,13 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
 ): Promise<AuthorizedNetworkSliceInfo> => {
   const { sliceInfoForUEConfigurationUpdate, homePlmnId, supi, tai } = input;
 
-  const slicesCollection = getCollection<SliceConfiguration>('slices');
+  try {
+    const slicesCollection = getCollection<SliceConfiguration>('slices');
 
-  const allowedNssaiList: AllowedNssai[] = [];
-  const configuredNssai: ConfiguredSnssai[] = [];
-  const rejectedNssaiInPlmn: Snssai[] = [];
-  const rejectedNssaiInTa: Snssai[] = [];
+    const allowedNssaiList: AllowedNssai[] = [];
+    const configuredNssai: ConfiguredSnssai[] = [];
+    const rejectedNssaiInPlmn: Snssai[] = [];
+    const rejectedNssaiInTa: Snssai[] = [];
 
   const subscription = await getSubscriptionBySupi(supi, homePlmnId);
 
@@ -417,10 +436,15 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
     }
   }
 
-  return {
-    allowedNssaiList: allowedNssaiList.length > 0 ? allowedNssaiList : undefined,
-    configuredNssai: configuredNssai.length > 0 ? configuredNssai : undefined,
-    rejectedNssaiInPlmn: rejectedNssaiInPlmn.length > 0 ? rejectedNssaiInPlmn : undefined,
-    rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined
-  };
+    return {
+      allowedNssaiList: allowedNssaiList.length > 0 ? allowedNssaiList : undefined,
+      configuredNssai: configuredNssai.length > 0 ? configuredNssai : undefined,
+      rejectedNssaiInPlmn: rejectedNssaiInPlmn.length > 0 ? rejectedNssaiInPlmn : undefined,
+      rejectedNssaiInTa: rejectedNssaiInTa.length > 0 ? rejectedNssaiInTa : undefined
+    };
+  } catch (error) {
+    console.error('Error in selectNetworkSlicesForUEConfigurationUpdate:', error);
+    const dbError = handleDatabaseError(error);
+    throw dbError;
+  }
 };

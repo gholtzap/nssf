@@ -10,6 +10,8 @@ import {
   deleteNssaiAvailabilitySubscription,
   getAuthorizedNssaiAvailabilityData
 } from '../services/nssai-availability';
+import { handleError } from '../utils/error-handler';
+import { createProblemDetails } from '../types/problem-details-types';
 
 const router = Router();
 
@@ -18,17 +20,19 @@ router.post('/subscriptions', async (req: Request, res: Response) => {
     const request: NssaiAvailabilitySubscriptionCreateRequest = req.body;
 
     if (!request.nfInstanceId || !request.subscriptionData || !request.notificationUri) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'nfInstanceId, subscriptionData, and notificationUri are required'
-      });
+      return res.status(400).json(createProblemDetails(
+        400,
+        'Bad Request',
+        'nfInstanceId, subscriptionData, and notificationUri are required'
+      ));
     }
 
     if (!request.subscriptionData.tai) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'subscriptionData.tai is required'
-      });
+      return res.status(400).json(createProblemDetails(
+        400,
+        'Bad Request',
+        'subscriptionData.tai is required'
+      ));
     }
 
     const subscription = await createNssaiAvailabilitySubscription(request);
@@ -46,11 +50,7 @@ router.post('/subscriptions', async (req: Request, res: Response) => {
         supportedFeatures: subscription.supportedFeatures
       });
   } catch (error) {
-    console.error('Error creating NSSAI availability subscription:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'An error occurred while creating the subscription'
-    });
+    handleError(error, res, 'POST /subscriptions');
   }
 });
 
@@ -61,10 +61,11 @@ router.get('/subscriptions/:subscriptionId', async (req: Request, res: Response)
     const subscription = await getNssaiAvailabilitySubscription(subscriptionId);
 
     if (!subscription) {
-      return res.status(404).json({
-        error: 'Not Found',
-        message: 'Subscription not found'
-      });
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'Subscription not found'
+      ));
     }
 
     const authorizedData = await getAuthorizedNssaiAvailabilityData(
@@ -82,11 +83,7 @@ router.get('/subscriptions/:subscriptionId', async (req: Request, res: Response)
       expiryTime: subscription.expiryTime
     });
   } catch (error) {
-    console.error('Error retrieving NSSAI availability subscription:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'An error occurred while retrieving the subscription'
-    });
+    handleError(error, res, 'GET /subscriptions/:subscriptionId');
   }
 });
 

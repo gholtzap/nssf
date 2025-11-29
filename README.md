@@ -122,6 +122,14 @@ My testing framework of choice is Mocha.
 - NSSAI availability update (PATCH)
 - TA-based NSSAI availability management
 - Default S-NSSAI indication handling
+- 3GPP Problem Details error responses
+- Request validation and input sanitization
+- Database connection error handling
+- Database operation error handling with retries
+- NRF discovery failure handling
+- NRF OAuth2 token acquisition error handling
+- Malformed request validation
+- Standardized error responses across all endpoints
 
 ## NOT IMPLEMENTED FEATURES
 
@@ -173,9 +181,3 @@ My testing framework of choice is Mocha.
 - Per-NRF OAuth2 requirement configuration
 - Secure slice information access control
 
-### Error Handling & Edge Cases
-- Invalid NSSAI request handling
-- Slice unavailability scenarios
-- NRF discovery failure handling
-- Database connection error handling
-- Malformed request validation

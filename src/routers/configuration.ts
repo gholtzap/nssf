@@ -37,6 +37,8 @@ import {
   updateSubscription,
   deleteSubscription
 } from '../services/subscription';
+import { handleError } from '../utils/error-handler';
+import { createProblemDetails } from '../types/problem-details-types';
 
 const router = Router();
 
@@ -45,8 +47,7 @@ router.get('/slices', async (req: Request, res: Response) => {
     const slices = await getAllSliceConfigurations();
     res.json(slices);
   } catch (error) {
-    console.error('Error getting slice configurations:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    handleError(error, res, 'GET /slices');
   }
 });
 
@@ -57,7 +58,11 @@ router.get('/slices/:sst/:sd?', async (req: Request, res: Response) => {
     const plmnIdRaw = req.query.plmnId as string;
 
     if (!plmnIdRaw) {
-      return res.status(400).json({ error: 'plmnId query parameter is required' });
+      return res.status(400).json(createProblemDetails(
+        400,
+        'Bad Request',
+        'plmnId query parameter is required'
+      ));
     }
 
     const plmnId = JSON.parse(plmnIdRaw);
@@ -65,13 +70,16 @@ router.get('/slices/:sst/:sd?', async (req: Request, res: Response) => {
 
     const slice = await getSliceConfiguration(snssai, plmnId);
     if (!slice) {
-      return res.status(404).json({ error: 'Slice configuration not found' });
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'Slice configuration not found'
+      ));
     }
 
     res.json(slice);
   } catch (error) {
-    console.error('Error getting slice configuration:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    handleError(error, res, 'GET /slices/:sst/:sd');
   }
 });
 
@@ -80,11 +88,15 @@ router.post('/slices', async (req: Request, res: Response) => {
     await createSliceConfiguration(req.body);
     res.status(201).json({ message: 'Slice configuration created successfully' });
   } catch (error: any) {
-    console.error('Error creating slice configuration:', error);
     if (error.message?.includes('already exists')) {
-      return res.status(409).json({ error: error.message });
+      return res.status(409).json(createProblemDetails(
+        409,
+        'Conflict',
+        'Slice configuration already exists',
+        error.message
+      ));
     }
-    res.status(500).json({ error: 'Internal Server Error' });
+    handleError(error, res, 'POST /slices');
   }
 });
 

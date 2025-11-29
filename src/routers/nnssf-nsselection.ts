@@ -2,11 +2,17 @@ import { Router, Request, Response } from 'express';
 import { AuthorizedNetworkSliceInfo, SliceInfoForRegistration, SliceInfoForPDUSession, SliceInfoForUEConfigurationUpdate } from '../types/nnssf-nsselection-types';
 import { NFType, PlmnId, Tai, SupportedFeatures } from '../types/common-types';
 import { selectNetworkSlicesForRegistration, selectNetworkSlicesForPDUSession, selectNetworkSlicesForUEConfigurationUpdate } from '../services/network-slice-selection';
+import { createProblemDetails, InvalidParam } from '../types/problem-details-types';
+import { validateRequiredParam, validatePlmnId, validateTai, validateSupi, parseJsonParam, validateSnssai } from '../utils/validation';
+import { DatabaseError } from '../db/mongodb';
+import { NrfError } from '../utils/errors';
 
 const router = Router();
 
 router.get('/network-slice-information', async (req: Request, res: Response) => {
   try {
+    const invalidParams: InvalidParam[] = [];
+
     const nfType = req.query['nf-type'] as NFType;
     const nfId = req.query['nf-id'] as string;
     const supi = req.query['supi'] as string | undefined;
@@ -17,63 +23,179 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
     const taiRaw = req.query['tai'] as string | undefined;
     const supportedFeatures = req.query['supported-features'] as SupportedFeatures | undefined;
 
-    if (!nfType || !nfId) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'nf-type and nf-id are required parameters'
+    const nfTypeError = validateRequiredParam(nfType, 'nf-type');
+    if (nfTypeError) invalidParams.push(nfTypeError);
+
+    const nfIdError = validateRequiredParam(nfId, 'nf-id');
+    if (nfIdError) invalidParams.push(nfIdError);
+
+    const supiError = validateSupi(supi);
+    if (supiError) invalidParams.push(supiError);
+
+    const homePlmnIdError = validateRequiredParam(homePlmnIdRaw, 'home-plmn-id');
+    if (homePlmnIdError) invalidParams.push(homePlmnIdError);
+
+    const { value: homePlmnId, error: homePlmnIdParseError } = parseJsonParam<PlmnId>(homePlmnIdRaw, 'home-plmn-id');
+    if (homePlmnIdParseError) {
+      invalidParams.push(homePlmnIdParseError);
+    } else if (homePlmnId) {
+      const plmnValidationError = validatePlmnId(homePlmnId, 'home-plmn-id');
+      if (plmnValidationError) invalidParams.push(plmnValidationError);
+    }
+
+    let tai: Tai | undefined = undefined;
+    if (taiRaw) {
+      const { value: taiValue, error: taiParseError } = parseJsonParam<Tai>(taiRaw, 'tai');
+      if (taiParseError) {
+        invalidParams.push(taiParseError);
+      } else if (taiValue) {
+        const taiValidationError = validateTai(taiValue, 'tai');
+        if (taiValidationError) {
+          invalidParams.push(taiValidationError);
+        } else {
+          tai = taiValue;
+        }
+      }
+    }
+
+    if (!sliceInfoRequestForRegistrationRaw && !sliceInfoRequestForPduSessionRaw && !sliceInfoRequestForUeCuRaw) {
+      invalidParams.push({
+        param: 'slice-info-request',
+        reason: 'one of slice-info-request-for-registration, slice-info-request-for-pdu-session, or slice-info-request-for-ue-cu is required'
       });
     }
 
-    if (!supi) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'supi is required'
-      });
-    }
-
-    if (!homePlmnIdRaw) {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'home-plmn-id is required'
-      });
+    if (invalidParams.length > 0) {
+      return res.status(400).json(createProblemDetails(
+        400,
+        'Invalid request parameters',
+        'The request contains invalid or missing parameters',
+        undefined,
+        invalidParams
+      ));
     }
 
     let authorizedNetworkSliceInfo: AuthorizedNetworkSliceInfo;
 
-    const homePlmnId: PlmnId = JSON.parse(homePlmnIdRaw);
-    const tai: Tai | undefined = taiRaw ? JSON.parse(taiRaw) : undefined;
-
     if (sliceInfoRequestForRegistrationRaw) {
-      const sliceInfoRequestForRegistration: SliceInfoForRegistration = JSON.parse(sliceInfoRequestForRegistrationRaw);
+      const { value: sliceInfoRequestForRegistration, error: parseError } =
+        parseJsonParam<SliceInfoForRegistration>(sliceInfoRequestForRegistrationRaw, 'slice-info-request-for-registration');
+
+      if (parseError || !sliceInfoRequestForRegistration) {
+        return res.status(400).json(createProblemDetails(
+          400,
+          'Invalid slice-info-request-for-registration',
+          'The slice-info-request-for-registration parameter must be valid JSON',
+          undefined,
+          parseError ? [parseError] : undefined
+        ));
+      }
+
+      if (sliceInfoRequestForRegistration.requestedNssai) {
+        for (let i = 0; i < sliceInfoRequestForRegistration.requestedNssai.length; i++) {
+          const snssaiError = validateSnssai(
+            sliceInfoRequestForRegistration.requestedNssai[i],
+            `slice-info-request-for-registration.requestedNssai[${i}]`
+          );
+          if (snssaiError) {
+            return res.status(400).json(createProblemDetails(
+              400,
+              'Invalid requested NSSAI',
+              'The requested NSSAI contains invalid S-NSSAI values',
+              undefined,
+              [snssaiError]
+            ));
+          }
+        }
+      }
 
       authorizedNetworkSliceInfo = await selectNetworkSlicesForRegistration({
         sliceInfoForRegistration: sliceInfoRequestForRegistration,
-        homePlmnId,
-        supi,
+        homePlmnId: homePlmnId!,
+        supi: supi!,
         tai
       });
     } else if (sliceInfoRequestForPduSessionRaw) {
-      const sliceInfoRequestForPduSession: SliceInfoForPDUSession = JSON.parse(sliceInfoRequestForPduSessionRaw);
+      const { value: sliceInfoRequestForPduSession, error: parseError } =
+        parseJsonParam<SliceInfoForPDUSession>(sliceInfoRequestForPduSessionRaw, 'slice-info-request-for-pdu-session');
+
+      if (parseError || !sliceInfoRequestForPduSession) {
+        return res.status(400).json(createProblemDetails(
+          400,
+          'Invalid slice-info-request-for-pdu-session',
+          'The slice-info-request-for-pdu-session parameter must be valid JSON',
+          undefined,
+          parseError ? [parseError] : undefined
+        ));
+      }
+
+      const snssaiError = validateSnssai(sliceInfoRequestForPduSession.sNssai, 'slice-info-request-for-pdu-session.sNssai');
+      if (snssaiError) {
+        return res.status(400).json(createProblemDetails(
+          400,
+          'Invalid S-NSSAI',
+          'The requested S-NSSAI is invalid',
+          undefined,
+          [snssaiError]
+        ));
+      }
+
+      if (sliceInfoRequestForPduSession.homeSnssai) {
+        const homeSnssaiError = validateSnssai(sliceInfoRequestForPduSession.homeSnssai, 'slice-info-request-for-pdu-session.homeSnssai');
+        if (homeSnssaiError) {
+          return res.status(400).json(createProblemDetails(
+            400,
+            'Invalid home S-NSSAI',
+            'The home S-NSSAI is invalid',
+            undefined,
+            [homeSnssaiError]
+          ));
+        }
+      }
 
       authorizedNetworkSliceInfo = await selectNetworkSlicesForPDUSession({
         sliceInfoForPDUSession: sliceInfoRequestForPduSession,
-        homePlmnId,
-        supi,
-        tai
-      });
-    } else if (sliceInfoRequestForUeCuRaw) {
-      const sliceInfoRequestForUeCu: SliceInfoForUEConfigurationUpdate = JSON.parse(sliceInfoRequestForUeCuRaw);
-
-      authorizedNetworkSliceInfo = await selectNetworkSlicesForUEConfigurationUpdate({
-        sliceInfoForUEConfigurationUpdate: sliceInfoRequestForUeCu,
-        homePlmnId,
-        supi,
+        homePlmnId: homePlmnId!,
+        supi: supi!,
         tai
       });
     } else {
-      return res.status(400).json({
-        error: 'Bad Request',
-        message: 'One of slice-info-request-for-registration, slice-info-request-for-pdu-session, or slice-info-request-for-ue-cu is required'
+      const { value: sliceInfoRequestForUeCu, error: parseError } =
+        parseJsonParam<SliceInfoForUEConfigurationUpdate>(sliceInfoRequestForUeCuRaw!, 'slice-info-request-for-ue-cu');
+
+      if (parseError || !sliceInfoRequestForUeCu) {
+        return res.status(400).json(createProblemDetails(
+          400,
+          'Invalid slice-info-request-for-ue-cu',
+          'The slice-info-request-for-ue-cu parameter must be valid JSON',
+          undefined,
+          parseError ? [parseError] : undefined
+        ));
+      }
+
+      if (sliceInfoRequestForUeCu.requestedNssai) {
+        for (let i = 0; i < sliceInfoRequestForUeCu.requestedNssai.length; i++) {
+          const snssaiError = validateSnssai(
+            sliceInfoRequestForUeCu.requestedNssai[i],
+            `slice-info-request-for-ue-cu.requestedNssai[${i}]`
+          );
+          if (snssaiError) {
+            return res.status(400).json(createProblemDetails(
+              400,
+              'Invalid requested NSSAI',
+              'The requested NSSAI contains invalid S-NSSAI values',
+              undefined,
+              [snssaiError]
+            ));
+          }
+        }
+      }
+
+      authorizedNetworkSliceInfo = await selectNetworkSlicesForUEConfigurationUpdate({
+        sliceInfoForUEConfigurationUpdate: sliceInfoRequestForUeCu,
+        homePlmnId: homePlmnId!,
+        supi: supi!,
+        tai
       });
     }
 
@@ -86,10 +208,40 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
     }
   } catch (error) {
     console.error('Error in network-slice-information endpoint:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'An error occurred while processing the request'
-    });
+
+    if (error instanceof DatabaseError) {
+      const status = error.isConnectionError ? 503 : 500;
+      const problemDetails = createProblemDetails(
+        status,
+        error.isConnectionError ? 'Service Unavailable' : 'Internal Server Error',
+        error.isConnectionError
+          ? 'Unable to connect to database. Please try again later.'
+          : 'A database error occurred while processing the request',
+        error.message
+      );
+      return res.status(status).json(problemDetails);
+    }
+
+    if (error instanceof NrfError) {
+      const status = error.isTimeout ? 504 : 503;
+      const problemDetails = createProblemDetails(
+        status,
+        error.isTimeout ? 'Gateway Timeout' : 'Service Unavailable',
+        error.isTimeout
+          ? 'NRF discovery service timed out'
+          : 'Unable to communicate with NRF discovery service',
+        error.message
+      );
+      return res.status(status).json(problemDetails);
+    }
+
+    const problemDetails = createProblemDetails(
+      500,
+      'Internal Server Error',
+      'An unexpected error occurred while processing the network slice selection request',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    res.status(500).json(problemDetails);
   }
 });
 

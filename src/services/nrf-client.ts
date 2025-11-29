@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import {
   AccessTokenRequest,
   AccessTokenResponse,
@@ -8,6 +8,7 @@ import {
   NfType
 } from '../types/nrf-types';
 import { PlmnId, Snssai, Tai, NfInstanceId, Uri } from '../types/common-types';
+import { NrfError, handleNrfError } from '../utils/errors';
 
 const tokenCache = new Map<string, AccessTokenCacheEntry>();
 
@@ -75,7 +76,8 @@ export const acquireAccessToken = async (
     return access_token;
   } catch (error) {
     console.error('Failed to acquire access token from NRF:', error);
-    return null;
+    const nrfError = handleNrfError(error, config.nrfAccessTokenUri);
+    throw nrfError;
   }
 };
 
@@ -95,6 +97,7 @@ export const discoverAmfInstances = async (
   oauth2Required?: boolean
 ): Promise<NFProfile[]> => {
   if (!config.nrfNfMgtUri) {
+    console.warn('NRF NF Management URI not configured');
     return [];
   }
 
@@ -104,14 +107,19 @@ export const discoverAmfInstances = async (
     };
 
     if (oauth2Required) {
-      const token = await acquireAccessToken(
-        config,
-        'nnrf-disc',
-        NfType.AMF
-      );
+      try {
+        const token = await acquireAccessToken(
+          config,
+          'nnrf-disc',
+          NfType.AMF
+        );
 
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      } catch (tokenError) {
+        console.error('Failed to acquire OAuth2 token for NRF discovery:', tokenError);
+        throw tokenError;
       }
     }
 
@@ -163,8 +171,13 @@ export const discoverAmfInstances = async (
 
     return response.data.nfInstances || [];
   } catch (error) {
+    if (error instanceof NrfError) {
+      throw error;
+    }
+
     console.error('Failed to discover AMF instances from NRF:', error);
-    return [];
+    const nrfError = handleNrfError(error, config.nrfNfMgtUri);
+    throw nrfError;
   }
 };
 
@@ -174,6 +187,7 @@ export const getNfProfile = async (
   oauth2Required?: boolean
 ): Promise<NFProfile | null> => {
   if (!config.nrfNfMgtUri) {
+    console.warn('NRF NF Management URI not configured');
     return null;
   }
 
@@ -183,15 +197,20 @@ export const getNfProfile = async (
     };
 
     if (oauth2Required) {
-      const token = await acquireAccessToken(
-        config,
-        'nnrf-nfm',
-        undefined,
-        nfInstanceId
-      );
+      try {
+        const token = await acquireAccessToken(
+          config,
+          'nnrf-nfm',
+          undefined,
+          nfInstanceId
+        );
 
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+      } catch (tokenError) {
+        console.error('Failed to acquire OAuth2 token for NF profile retrieval:', tokenError);
+        throw tokenError;
       }
     }
 
@@ -204,8 +223,13 @@ export const getNfProfile = async (
 
     return response.data;
   } catch (error) {
+    if (error instanceof NrfError) {
+      throw error;
+    }
+
     console.error(`Failed to get NF profile for ${nfInstanceId}:`, error);
-    return null;
+    const nrfError = handleNrfError(error, config.nrfNfMgtUri);
+    throw nrfError;
   }
 };
 
