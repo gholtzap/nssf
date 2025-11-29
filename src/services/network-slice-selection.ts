@@ -7,10 +7,11 @@ import {
   SliceInfoForRegistration,
   SliceInfoForPDUSession,
   SliceInfoForUEConfigurationUpdate,
-  RoamingIndication
+  RoamingIndication,
+  NsiInformation
 } from '../types/nnssf-nsselection-types';
 import { Snssai, PlmnId, Tai, AccessType } from '../types/common-types';
-import { SliceConfiguration } from '../types/db-types';
+import { SliceConfiguration, NsiConfiguration } from '../types/db-types';
 import { getSubscriptionBySupi } from './subscription';
 
 type NetworkSliceSelectionInput = {
@@ -50,6 +51,48 @@ const isSliceAvailableInTai = (slice: SliceConfiguration, tai?: Tai): boolean =>
   return slice.taiList.some(sliceTai =>
     plmnMatches(sliceTai.plmnId, tai.plmnId) && sliceTai.tac === tai.tac
   );
+};
+
+const isNsiAvailableInTai = (nsi: NsiConfiguration, tai?: Tai): boolean => {
+  if (!tai || !nsi.taiList || nsi.taiList.length === 0) {
+    return true;
+  }
+
+  return nsi.taiList.some(nsiTai =>
+    plmnMatches(nsiTai.plmnId, tai.plmnId) && nsiTai.tac === tai.tac
+  );
+};
+
+const selectNsiForSnssai = async (
+  snssai: Snssai,
+  plmnId: PlmnId,
+  tai?: Tai
+): Promise<NsiInformation[]> => {
+  const nsiCollection = getCollection<NsiConfiguration>('nsi');
+
+  const nsiConfigs = await nsiCollection.find({
+    'snssai.sst': snssai.sst,
+    'snssai.sd': snssai.sd,
+    'plmnId.mcc': plmnId.mcc,
+    'plmnId.mnc': plmnId.mnc
+  }).toArray();
+
+  const availableNsis = nsiConfigs.filter(nsi => isNsiAvailableInTai(nsi, tai));
+
+  availableNsis.sort((a, b) => {
+    if (a.priority !== b.priority) {
+      return (b.priority || 0) - (a.priority || 0);
+    }
+    return (a.loadLevel || 0) - (b.loadLevel || 0);
+  });
+
+  return availableNsis.map(nsi => ({
+    nrfId: nsi.nrfId,
+    nsiId: nsi.nsiId,
+    nrfNfMgtUri: nsi.nrfNfMgtUri,
+    nrfAccessTokenUri: nsi.nrfAccessTokenUri,
+    nrfOauth2Required: nsi.nrfOauth2Required
+  }));
 };
 
 export const selectNetworkSlicesForRegistration = async (
@@ -114,9 +157,16 @@ export const selectNetworkSlicesForRegistration = async (
   }
 
   if (processedSnssais.length > 0) {
-    const allowedSnssaiList: AllowedSnssai[] = processedSnssais.map(snssai => ({
-      allowedSnssai: snssai
-    }));
+    const allowedSnssaiList: AllowedSnssai[] = [];
+
+    for (const snssai of processedSnssais) {
+      const nsiInformationList = await selectNsiForSnssai(snssai, homePlmnId, tai);
+
+      allowedSnssaiList.push({
+        allowedSnssai: snssai,
+        nsiInformationList: nsiInformationList.length > 0 ? nsiInformationList : undefined
+      });
+    }
 
     allowedNssaiList.push({
       allowedSnssaiList,
@@ -202,8 +252,11 @@ export const selectNetworkSlicesForPDUSession = async (
     };
   }
 
+  const nsiInformationList = await selectNsiForSnssai(requestedSnssai, homePlmnId, tai);
+
   const allowedSnssai: AllowedSnssai = {
-    allowedSnssai: requestedSnssai
+    allowedSnssai: requestedSnssai,
+    nsiInformationList: nsiInformationList.length > 0 ? nsiInformationList : undefined
   };
 
   if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && homeSnssai) {
@@ -288,9 +341,16 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
   }
 
   if (processedSnssais.length > 0) {
-    const allowedSnssaiList: AllowedSnssai[] = processedSnssais.map(snssai => ({
-      allowedSnssai: snssai
-    }));
+    const allowedSnssaiList: AllowedSnssai[] = [];
+
+    for (const snssai of processedSnssais) {
+      const nsiInformationList = await selectNsiForSnssai(snssai, homePlmnId, tai);
+
+      allowedSnssaiList.push({
+        allowedSnssai: snssai,
+        nsiInformationList: nsiInformationList.length > 0 ? nsiInformationList : undefined
+      });
+    }
 
     allowedNssaiList.push({
       allowedSnssaiList,

@@ -1,5 +1,5 @@
-import { Snssai, PlmnId, Tai, AccessType } from './common-types';
-import { SubscribedSnssai } from './nnssf-nsselection-types';
+import { Snssai, PlmnId, Tai, AccessType, Uri } from './common-types';
+import { SubscribedSnssai, NsiId } from './nnssf-nsselection-types';
 
 export type SliceConfiguration = {
   snssai: Snssai;
@@ -16,4 +16,17 @@ export type UeSubscription = {
   plmnId: PlmnId;
   subscribedSnssais: SubscribedSnssai[];
   defaultSnssai?: Snssai;
+};
+
+export type NsiConfiguration = {
+  nsiId: NsiId;
+  snssai: Snssai;
+  plmnId: PlmnId;
+  nrfId: Uri;
+  nrfNfMgtUri?: Uri;
+  nrfAccessTokenUri?: Uri;
+  nrfOauth2Required?: Record<string, boolean>;
+  taiList?: Tai[];
+  priority?: number;
+  loadLevel?: number;
 };

@@ -46,6 +46,10 @@ My testing framework of choice is Mocha.
 - Subscribed S-NSSAI storage and retrieval
 - Subscriber profile management in MongoDB
 - Slice subscription validation
+- NSI selection logic
+- NSI information provisioning (NRF URIs, NSI IDs)
+- Per-NSI NRF endpoint configuration
+- NSI-specific OAuth2 requirements
 
 ## NOT IMPLEMENTED FEATURES
 
@@ -61,12 +65,6 @@ My testing framework of choice is Mocha.
 - Mapped home S-NSSAI handling
 - S-NSSAI mapping request processing
 - NSSAI mapping configuration storage
-
-### Network Slice Instance (NSI) Management
-- NSI selection logic
-- NSI information provisioning (NRF URIs, NSI IDs)
-- Per-NSI NRF endpoint configuration
-- NSI-specific OAuth2 requirements
 
 ### AMF Selection & Redirection
 - Target AMF Set selection
