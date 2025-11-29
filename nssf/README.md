@@ -40,11 +40,11 @@ My testing framework of choice is Mocha.
 - TypeScript types from 3GPP OpenAPI specification
 - Health check endpoint
 - Network Slice Selection endpoint skeleton
+- Network Slice Selection for UE Registration
 
 ## NOT IMPLEMENTED FEATURES
 
 ### Core Network Slice Selection
-- Network Slice Selection for UE Registration
 - Network Slice Selection for PDU Session Establishment
 - Network Slice Selection for UE Configuration Update
 - Allowed NSSAI determination based on subscription and policy
@@ -137,10 +137,3 @@ My testing framework of choice is Mocha.
 - NRF discovery failure handling
 - Database connection error handling
 - Malformed request validation
-
-### Monitoring & Observability
-- Request/response logging
-- Slice selection decision logging
-- Performance metrics collection
-- Health check enhancements
-- Debug endpoints for troubleshooting
