@@ -33,6 +33,49 @@ My testing framework of choice is Mocha.
 
 - `GET /nnssf-nsselection/v2/network-slice-information` - Retrieve the Network Slice Selection Information
 
+### Configuration Management API
+
+#### Slice Configuration
+- `GET /nssf-config/v1/slices` - Get all slice configurations
+- `GET /nssf-config/v1/slices/:sst/:sd?` - Get specific slice configuration
+- `POST /nssf-config/v1/slices` - Create slice configuration
+- `PUT /nssf-config/v1/slices/:sst/:sd?` - Update slice configuration
+- `DELETE /nssf-config/v1/slices/:sst/:sd?` - Delete slice configuration
+
+#### NSI Configuration
+- `GET /nssf-config/v1/nsi` - Get all NSI configurations
+- `GET /nssf-config/v1/nsi/:nsiId` - Get specific NSI configuration
+- `POST /nssf-config/v1/nsi` - Create NSI configuration
+- `PUT /nssf-config/v1/nsi/:nsiId` - Update NSI configuration
+- `DELETE /nssf-config/v1/nsi/:nsiId` - Delete NSI configuration
+
+#### AMF Set Configuration
+- `GET /nssf-config/v1/amf-sets` - Get all AMF Set configurations
+- `GET /nssf-config/v1/amf-sets/:amfSetId` - Get specific AMF Set configuration
+- `POST /nssf-config/v1/amf-sets` - Create AMF Set configuration
+- `PUT /nssf-config/v1/amf-sets/:amfSetId` - Update AMF Set configuration
+- `DELETE /nssf-config/v1/amf-sets/:amfSetId` - Delete AMF Set configuration
+
+#### AMF Service Set Configuration
+- `GET /nssf-config/v1/amf-service-sets` - Get all AMF Service Set configurations
+- `GET /nssf-config/v1/amf-service-sets/:amfServiceSetId` - Get specific AMF Service Set configuration
+- `POST /nssf-config/v1/amf-service-sets` - Create AMF Service Set configuration
+- `PUT /nssf-config/v1/amf-service-sets/:amfServiceSetId` - Update AMF Service Set configuration
+- `DELETE /nssf-config/v1/amf-service-sets/:amfServiceSetId` - Delete AMF Service Set configuration
+
+#### AMF Instance Configuration
+- `GET /nssf-config/v1/amf-instances` - Get all AMF Instance configurations
+- `GET /nssf-config/v1/amf-instances/:nfInstanceId` - Get specific AMF Instance configuration
+- `POST /nssf-config/v1/amf-instances` - Create AMF Instance configuration
+- `PUT /nssf-config/v1/amf-instances/:nfInstanceId` - Update AMF Instance configuration
+- `DELETE /nssf-config/v1/amf-instances/:nfInstanceId` - Delete AMF Instance configuration
+
+#### Subscription Management
+- `GET /nssf-config/v1/subscriptions/:supi` - Get subscription by SUPI
+- `POST /nssf-config/v1/subscriptions` - Create subscription
+- `PUT /nssf-config/v1/subscriptions/:supi` - Update subscription
+- `DELETE /nssf-config/v1/subscriptions/:supi` - Delete subscription
+
 ## IMPLEMENTED FEATURES
 
 - Basic server setup with Express
@@ -55,6 +98,13 @@ My testing framework of choice is Mocha.
 - Candidate AMF list generation
 - AMF Set NRF discovery endpoint selection
 - Redirection responses (307/308) with NRF information
+- Configuration Management REST API
+- Slice configuration CRUD operations
+- NSI configuration CRUD operations
+- AMF Set configuration CRUD operations
+- AMF Service Set configuration CRUD operations
+- AMF Instance configuration CRUD operations
+- Subscription management REST API endpoints
 
 ## NOT IMPLEMENTED FEATURES
 
@@ -119,13 +169,6 @@ My testing framework of choice is Mocha.
 - NRF-based OAuth2 token acquisition
 - Per-NRF OAuth2 requirement configuration
 - Secure slice information access control
-
-### Configuration & Management
-- Slice configuration storage in MongoDB
-- Network slice policy configuration
-- TA range configuration for slices
-- PLMN-wide slice configuration
-- Slice priority and QoS policies
 
 ### Error Handling & Edge Cases
 - Invalid NSSAI request handling

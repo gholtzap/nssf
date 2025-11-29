@@ -4,6 +4,7 @@ dotenv.config();
 import express, { Request, Response } from 'express';
 import { initializeMongoDB } from './db/mongodb';
 import nsselectionRouter from './routers/nnssf-nsselection';
+import configurationRouter from './routers/configuration';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,6 +16,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 app.use('/nnssf-nsselection/v2', nsselectionRouter);
+app.use('/nssf-config/v1', configurationRouter);
 
 const startServer = async () => {
   try {

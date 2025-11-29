@@ -1,0 +1,531 @@
+import { Router, Request, Response } from 'express';
+import {
+  getAllSliceConfigurations,
+  getSliceConfiguration,
+  createSliceConfiguration,
+  updateSliceConfiguration,
+  deleteSliceConfiguration
+} from '../services/slice-configuration';
+import {
+  getAllNsiConfigurations,
+  getNsiConfiguration,
+  getNsiConfigurationsBySnssai,
+  createNsiConfiguration,
+  updateNsiConfiguration,
+  deleteNsiConfiguration
+} from '../services/nsi-configuration';
+import {
+  getAllAmfSets,
+  getAmfSet,
+  createAmfSet,
+  updateAmfSet,
+  deleteAmfSet,
+  getAllAmfServiceSets,
+  getAmfServiceSet,
+  createAmfServiceSet,
+  updateAmfServiceSet,
+  deleteAmfServiceSet,
+  getAllAmfInstances,
+  getAmfInstance,
+  createAmfInstance,
+  updateAmfInstance,
+  deleteAmfInstance
+} from '../services/amf-configuration';
+import {
+  getSubscriptionBySupi,
+  createSubscription,
+  updateSubscription,
+  deleteSubscription
+} from '../services/subscription';
+
+const router = Router();
+
+router.get('/slices', async (req: Request, res: Response) => {
+  try {
+    const slices = await getAllSliceConfigurations();
+    res.json(slices);
+  } catch (error) {
+    console.error('Error getting slice configurations:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/slices/:sst/:sd?', async (req: Request, res: Response) => {
+  try {
+    const sst = parseInt(req.params.sst);
+    const sd = req.params.sd;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!plmnIdRaw) {
+      return res.status(400).json({ error: 'plmnId query parameter is required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    const snssai = { sst, sd };
+
+    const slice = await getSliceConfiguration(snssai, plmnId);
+    if (!slice) {
+      return res.status(404).json({ error: 'Slice configuration not found' });
+    }
+
+    res.json(slice);
+  } catch (error) {
+    console.error('Error getting slice configuration:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.post('/slices', async (req: Request, res: Response) => {
+  try {
+    await createSliceConfiguration(req.body);
+    res.status(201).json({ message: 'Slice configuration created successfully' });
+  } catch (error: any) {
+    console.error('Error creating slice configuration:', error);
+    if (error.message?.includes('already exists')) {
+      return res.status(409).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.put('/slices/:sst/:sd?', async (req: Request, res: Response) => {
+  try {
+    const sst = parseInt(req.params.sst);
+    const sd = req.params.sd;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!plmnIdRaw) {
+      return res.status(400).json({ error: 'plmnId query parameter is required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    const snssai = { sst, sd };
+
+    await updateSliceConfiguration(snssai, plmnId, req.body);
+    res.json({ message: 'Slice configuration updated successfully' });
+  } catch (error: any) {
+    console.error('Error updating slice configuration:', error);
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.delete('/slices/:sst/:sd?', async (req: Request, res: Response) => {
+  try {
+    const sst = parseInt(req.params.sst);
+    const sd = req.params.sd;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!plmnIdRaw) {
+      return res.status(400).json({ error: 'plmnId query parameter is required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    const snssai = { sst, sd };
+
+    await deleteSliceConfiguration(snssai, plmnId);
+    res.json({ message: 'Slice configuration deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting slice configuration:', error);
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/nsi', async (req: Request, res: Response) => {
+  try {
+    const snssaiRaw = req.query.snssai as string | undefined;
+    const plmnIdRaw = req.query.plmnId as string | undefined;
+
+    if (snssaiRaw && plmnIdRaw) {
+      const snssai = JSON.parse(snssaiRaw);
+      const plmnId = JSON.parse(plmnIdRaw);
+      const nsis = await getNsiConfigurationsBySnssai(snssai, plmnId);
+      return res.json(nsis);
+    }
+
+    const nsis = await getAllNsiConfigurations();
+    res.json(nsis);
+  } catch (error) {
+    console.error('Error getting NSI configurations:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/nsi/:nsiId', async (req: Request, res: Response) => {
+  try {
+    const nsiId = req.params.nsiId;
+    const nsi = await getNsiConfiguration(nsiId);
+
+    if (!nsi) {
+      return res.status(404).json({ error: 'NSI configuration not found' });
+    }
+
+    res.json(nsi);
+  } catch (error) {
+    console.error('Error getting NSI configuration:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.post('/nsi', async (req: Request, res: Response) => {
+  try {
+    await createNsiConfiguration(req.body);
+    res.status(201).json({ message: 'NSI configuration created successfully' });
+  } catch (error: any) {
+    console.error('Error creating NSI configuration:', error);
+    if (error.message?.includes('already exists')) {
+      return res.status(409).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.put('/nsi/:nsiId', async (req: Request, res: Response) => {
+  try {
+    const nsiId = req.params.nsiId;
+    await updateNsiConfiguration(nsiId, req.body);
+    res.json({ message: 'NSI configuration updated successfully' });
+  } catch (error: any) {
+    console.error('Error updating NSI configuration:', error);
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.delete('/nsi/:nsiId', async (req: Request, res: Response) => {
+  try {
+    const nsiId = req.params.nsiId;
+    await deleteNsiConfiguration(nsiId);
+    res.json({ message: 'NSI configuration deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting NSI configuration:', error);
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/amf-sets', async (req: Request, res: Response) => {
+  try {
+    const amfSets = await getAllAmfSets();
+    res.json(amfSets);
+  } catch (error) {
+    console.error('Error getting AMF Sets:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/amf-sets/:amfSetId', async (req: Request, res: Response) => {
+  try {
+    const amfSetId = req.params.amfSetId;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!plmnIdRaw) {
+      return res.status(400).json({ error: 'plmnId query parameter is required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    const amfSet = await getAmfSet(amfSetId, plmnId);
+
+    if (!amfSet) {
+      return res.status(404).json({ error: 'AMF Set not found' });
+    }
+
+    res.json(amfSet);
+  } catch (error) {
+    console.error('Error getting AMF Set:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.post('/amf-sets', async (req: Request, res: Response) => {
+  try {
+    await createAmfSet(req.body);
+    res.status(201).json({ message: 'AMF Set created successfully' });
+  } catch (error: any) {
+    console.error('Error creating AMF Set:', error);
+    if (error.message?.includes('already exists')) {
+      return res.status(409).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.put('/amf-sets/:amfSetId', async (req: Request, res: Response) => {
+  try {
+    const amfSetId = req.params.amfSetId;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!plmnIdRaw) {
+      return res.status(400).json({ error: 'plmnId query parameter is required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    await updateAmfSet(amfSetId, plmnId, req.body);
+    res.json({ message: 'AMF Set updated successfully' });
+  } catch (error: any) {
+    console.error('Error updating AMF Set:', error);
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.delete('/amf-sets/:amfSetId', async (req: Request, res: Response) => {
+  try {
+    const amfSetId = req.params.amfSetId;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!plmnIdRaw) {
+      return res.status(400).json({ error: 'plmnId query parameter is required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    await deleteAmfSet(amfSetId, plmnId);
+    res.json({ message: 'AMF Set deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting AMF Set:', error);
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/amf-service-sets', async (req: Request, res: Response) => {
+  try {
+    const serviceSets = await getAllAmfServiceSets();
+    res.json(serviceSets);
+  } catch (error) {
+    console.error('Error getting AMF Service Sets:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/amf-service-sets/:amfServiceSetId', async (req: Request, res: Response) => {
+  try {
+    const amfServiceSetId = req.params.amfServiceSetId;
+    const amfSetId = req.query.amfSetId as string;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!amfSetId || !plmnIdRaw) {
+      return res.status(400).json({ error: 'amfSetId and plmnId query parameters are required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    const serviceSet = await getAmfServiceSet(amfServiceSetId, amfSetId, plmnId);
+
+    if (!serviceSet) {
+      return res.status(404).json({ error: 'AMF Service Set not found' });
+    }
+
+    res.json(serviceSet);
+  } catch (error) {
+    console.error('Error getting AMF Service Set:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.post('/amf-service-sets', async (req: Request, res: Response) => {
+  try {
+    await createAmfServiceSet(req.body);
+    res.status(201).json({ message: 'AMF Service Set created successfully' });
+  } catch (error: any) {
+    console.error('Error creating AMF Service Set:', error);
+    if (error.message?.includes('already exists')) {
+      return res.status(409).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.put('/amf-service-sets/:amfServiceSetId', async (req: Request, res: Response) => {
+  try {
+    const amfServiceSetId = req.params.amfServiceSetId;
+    const amfSetId = req.query.amfSetId as string;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!amfSetId || !plmnIdRaw) {
+      return res.status(400).json({ error: 'amfSetId and plmnId query parameters are required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    await updateAmfServiceSet(amfServiceSetId, amfSetId, plmnId, req.body);
+    res.json({ message: 'AMF Service Set updated successfully' });
+  } catch (error: any) {
+    console.error('Error updating AMF Service Set:', error);
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.delete('/amf-service-sets/:amfServiceSetId', async (req: Request, res: Response) => {
+  try {
+    const amfServiceSetId = req.params.amfServiceSetId;
+    const amfSetId = req.query.amfSetId as string;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!amfSetId || !plmnIdRaw) {
+      return res.status(400).json({ error: 'amfSetId and plmnId query parameters are required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    await deleteAmfServiceSet(amfServiceSetId, amfSetId, plmnId);
+    res.json({ message: 'AMF Service Set deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting AMF Service Set:', error);
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/amf-instances', async (req: Request, res: Response) => {
+  try {
+    const instances = await getAllAmfInstances();
+    res.json(instances);
+  } catch (error) {
+    console.error('Error getting AMF Instances:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/amf-instances/:nfInstanceId', async (req: Request, res: Response) => {
+  try {
+    const nfInstanceId = req.params.nfInstanceId;
+    const instance = await getAmfInstance(nfInstanceId);
+
+    if (!instance) {
+      return res.status(404).json({ error: 'AMF Instance not found' });
+    }
+
+    res.json(instance);
+  } catch (error) {
+    console.error('Error getting AMF Instance:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.post('/amf-instances', async (req: Request, res: Response) => {
+  try {
+    await createAmfInstance(req.body);
+    res.status(201).json({ message: 'AMF Instance created successfully' });
+  } catch (error: any) {
+    console.error('Error creating AMF Instance:', error);
+    if (error.message?.includes('already exists')) {
+      return res.status(409).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.put('/amf-instances/:nfInstanceId', async (req: Request, res: Response) => {
+  try {
+    const nfInstanceId = req.params.nfInstanceId;
+    await updateAmfInstance(nfInstanceId, req.body);
+    res.json({ message: 'AMF Instance updated successfully' });
+  } catch (error: any) {
+    console.error('Error updating AMF Instance:', error);
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.delete('/amf-instances/:nfInstanceId', async (req: Request, res: Response) => {
+  try {
+    const nfInstanceId = req.params.nfInstanceId;
+    await deleteAmfInstance(nfInstanceId);
+    res.json({ message: 'AMF Instance deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting AMF Instance:', error);
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/subscriptions/:supi', async (req: Request, res: Response) => {
+  try {
+    const supi = req.params.supi;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!plmnIdRaw) {
+      return res.status(400).json({ error: 'plmnId query parameter is required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    const subscription = await getSubscriptionBySupi(supi, plmnId);
+
+    if (!subscription) {
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+
+    res.json(subscription);
+  } catch (error) {
+    console.error('Error getting subscription:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.post('/subscriptions', async (req: Request, res: Response) => {
+  try {
+    await createSubscription(req.body);
+    res.status(201).json({ message: 'Subscription created successfully' });
+  } catch (error: any) {
+    console.error('Error creating subscription:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.put('/subscriptions/:supi', async (req: Request, res: Response) => {
+  try {
+    const supi = req.params.supi;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!plmnIdRaw) {
+      return res.status(400).json({ error: 'plmnId query parameter is required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    await updateSubscription(supi, plmnId, req.body);
+    res.json({ message: 'Subscription updated successfully' });
+  } catch (error: any) {
+    console.error('Error updating subscription:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.delete('/subscriptions/:supi', async (req: Request, res: Response) => {
+  try {
+    const supi = req.params.supi;
+    const plmnIdRaw = req.query.plmnId as string;
+
+    if (!plmnIdRaw) {
+      return res.status(400).json({ error: 'plmnId query parameter is required' });
+    }
+
+    const plmnId = JSON.parse(plmnIdRaw);
+    await deleteSubscription(supi, plmnId);
+    res.json({ message: 'Subscription deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting subscription:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+export default router;
