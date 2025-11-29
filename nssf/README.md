@@ -43,12 +43,104 @@ My testing framework of choice is Mocha.
 
 ## NOT IMPLEMENTED FEATURES
 
-- Network Slice Selection logic
-- Network Slice instance selection
-- S-NSSAI mapping
-- NRF integration
-- AMF set selection
-- Subscription management
-- Policy-based slice selection
-- Multi-PLMN support
-- Roaming scenarios
+### Core Network Slice Selection
+- Network Slice Selection for UE Registration
+- Network Slice Selection for PDU Session Establishment
+- Network Slice Selection for UE Configuration Update
+- Allowed NSSAI determination based on subscription and policy
+- Configured NSSAI determination
+- Rejected NSSAI handling (in PLMN and in TA)
+- Default S-NSSAI indication handling
+- Requested NSSAI validation and processing
+
+### S-NSSAI Mapping & Translation
+- S-NSSAI mapping between serving and home network
+- Mapped home S-NSSAI handling
+- S-NSSAI mapping request processing
+- NSSAI mapping configuration storage
+
+### Network Slice Instance (NSI) Management
+- NSI selection logic
+- NSI information provisioning (NRF URIs, NSI IDs)
+- Per-NSI NRF endpoint configuration
+- NSI-specific OAuth2 requirements
+
+### AMF Selection & Redirection
+- Target AMF Set selection
+- Target AMF Service Set selection
+- Candidate AMF list generation
+- AMF Set NRF discovery endpoint selection
+- Redirection responses (307/308) with NRF information
+
+### NRF Integration
+- NRF discovery for AMF instances
+- NRF OAuth2 token endpoint integration
+- NRF NFManagement service integration
+- Per-service OAuth2 requirement handling
+
+### Geographical & Topology Support
+- Tracking Area (TAI) based slice availability
+- TA-specific rejected NSSAI handling
+- PLMN-specific slice configuration
+- Home PLMN identification and handling
+
+### Roaming Support
+- Roaming indication processing (non-roaming, local breakout, home-routed)
+- Home-routed roaming slice selection
+- Local breakout roaming slice selection
+- VPLMN/HPLMN S-NSSAI mapping
+
+### Subscription & Policy Management
+- Subscribed S-NSSAI storage and retrieval
+- Subscriber profile management in MongoDB
+- Slice subscription validation
+- Default configured S-NSSAI handling
+- Network Slice-Specific Registration Group (NSSRG) support
+- UE NSSRG support indication handling
+- NSSRG suppression indication handling
+
+### Network Slice Admission Control
+- Network Slice Admission Group (NSAG) support
+- NSAG to S-NSSAI association
+- NSAG information provisioning with TAI ranges
+- NSAG-based admission decisions
+
+### Feature Negotiation & Capabilities
+- Supported features parameter handling
+- Feature negotiation between NF consumer and NSSF
+- Required features for target slice instances
+- NF capability-based slice selection
+
+### Nnssf_NSSAIAvailability Service
+- NSSAI availability subscription (POST)
+- NSSAI availability unsubscribe (DELETE)
+- NSSAI availability notification
+- NSSAI availability update (PATCH)
+- TA-based NSSAI availability management
+
+### Security & Authorization
+- OAuth2 client credentials flow
+- NRF-based OAuth2 token acquisition
+- Per-NRF OAuth2 requirement configuration
+- Secure slice information access control
+
+### Configuration & Management
+- Slice configuration storage in MongoDB
+- Network slice policy configuration
+- TA range configuration for slices
+- PLMN-wide slice configuration
+- Slice priority and QoS policies
+
+### Error Handling & Edge Cases
+- Invalid NSSAI request handling
+- Slice unavailability scenarios
+- NRF discovery failure handling
+- Database connection error handling
+- Malformed request validation
+
+### Monitoring & Observability
+- Request/response logging
+- Slice selection decision logging
+- Performance metrics collection
+- Health check enhancements
+- Debug endpoints for troubleshooting
