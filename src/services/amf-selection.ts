@@ -8,6 +8,7 @@ import {
   AmfServiceSetConfig,
   AmfInstanceConfig
 } from '../types/amf-selection-types';
+import { discoverAmfViaNrf } from './nrf-amf-discovery';
 
 type AmfSelectionInput = {
   targetSnssais: Snssai[];
@@ -170,5 +171,52 @@ export const performAmfSelection = async (
     ...amfSetResult,
     targetAmfServiceSet: amfServiceSetId || undefined,
     candidateAmfList: candidateAmfList.length > 0 ? candidateAmfList : undefined
+  };
+};
+
+type AmfSelectionWithNrfInput = AmfSelectionInput & {
+  nrfId: Uri;
+  nrfNfMgtUri?: Uri;
+  nrfAccessTokenUri?: Uri;
+  nrfOauth2Required?: Record<string, boolean>;
+  nfInstanceId: NfInstanceId;
+  targetNsiList?: string[];
+};
+
+export const performAmfSelectionWithNrfFallback = async (
+  input: AmfSelectionWithNrfInput
+): Promise<AmfSelectionResult | null> => {
+  const localResult = await performAmfSelection(input);
+
+  if (localResult && localResult.candidateAmfList && localResult.candidateAmfList.length > 0) {
+    return localResult;
+  }
+
+  const nrfResult = await discoverAmfViaNrf({
+    nrfId: input.nrfId,
+    nrfNfMgtUri: input.nrfNfMgtUri,
+    nrfAccessTokenUri: input.nrfAccessTokenUri,
+    nrfOauth2Required: input.nrfOauth2Required,
+    nfInstanceId: input.nfInstanceId,
+    targetSnssais: input.targetSnssais,
+    plmnId: input.plmnId,
+    tai: input.tai,
+    targetNsiList: input.targetNsiList
+  });
+
+  if (!nrfResult || nrfResult.candidateAmfList.length === 0) {
+    return localResult;
+  }
+
+  const firstCandidate = nrfResult.candidateAmfList[0];
+
+  return {
+    targetAmfSet: firstCandidate.amfSetId,
+    targetAmfServiceSet: firstCandidate.amfServiceSetId,
+    candidateAmfList: nrfResult.candidateAmfList,
+    nrfAmfSet: input.nrfId,
+    nrfAmfSetNfMgtUri: input.nrfNfMgtUri,
+    nrfAmfSetAccessTokenUri: input.nrfAccessTokenUri,
+    nrfOauth2Required: input.nrfOauth2Required
   };
 };

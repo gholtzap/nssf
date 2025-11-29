@@ -1,6 +1,7 @@
 import { getCollection } from '../db/mongodb';
 import { NsiConfiguration } from '../types/db-types';
-import { NsiId, Snssai, PlmnId } from '../types/common-types';
+import { Snssai, PlmnId } from '../types/common-types';
+import { NsiId } from '../types/nnssf-nsselection-types';
 
 export const getAllNsiConfigurations = async (): Promise<NsiConfiguration[]> => {
   const nsiCollection = getCollection<NsiConfiguration>('nsi');

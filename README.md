@@ -105,6 +105,10 @@ My testing framework of choice is Mocha.
 - AMF Service Set configuration CRUD operations
 - AMF Instance configuration CRUD operations
 - Subscription management REST API endpoints
+- NRF discovery for AMF instances
+- NRF OAuth2 token endpoint integration
+- NRF NFManagement service integration
+- Per-service OAuth2 requirement handling
 
 ## NOT IMPLEMENTED FEATURES
 
@@ -120,12 +124,6 @@ My testing framework of choice is Mocha.
 - Mapped home S-NSSAI handling
 - S-NSSAI mapping request processing
 - NSSAI mapping configuration storage
-
-### NRF Integration
-- NRF discovery for AMF instances
-- NRF OAuth2 token endpoint integration
-- NRF NFManagement service integration
-- Per-service OAuth2 requirement handling
 
 ### Geographical & Topology Support
 - Tracking Area (TAI) based slice availability
