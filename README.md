@@ -121,6 +121,7 @@ My testing framework of choice is Mocha.
 - NSSAI availability notification
 - NSSAI availability update (PATCH)
 - TA-based NSSAI availability management
+- Default S-NSSAI indication handling
 
 ## NOT IMPLEMENTED FEATURES
 
@@ -128,7 +129,6 @@ My testing framework of choice is Mocha.
 - Allowed NSSAI determination based on subscription and policy
 - Configured NSSAI determination
 - Rejected NSSAI handling (in PLMN and in TA)
-- Default S-NSSAI indication handling
 - Requested NSSAI validation and processing
 
 ### S-NSSAI Mapping & Translation

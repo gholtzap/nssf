@@ -119,13 +119,22 @@ export const selectNetworkSlicesForRegistration = async (
 
   const subscribedSnssais = subscription.subscribedSnssais;
   const requestedNssais = sliceInfoForRegistration.requestedNssai || [];
+  const defaultConfiguredSnssaiInd = sliceInfoForRegistration.defaultConfiguredSnssaiInd;
 
   const availableSlices = await slicesCollection.find({}).toArray();
 
   const processedSnssais: Snssai[] = [];
 
-  const snssaisToCheck = requestedNssais.length > 0 ? requestedNssais :
-                         subscribedSnssais.map(s => s.subscribedSnssai);
+  let snssaisToCheck: Snssai[];
+  if (defaultConfiguredSnssaiInd && requestedNssais.length === 0) {
+    snssaisToCheck = subscribedSnssais
+      .filter(s => s.defaultIndication === true)
+      .map(s => s.subscribedSnssai);
+  } else if (requestedNssais.length > 0) {
+    snssaisToCheck = requestedNssais;
+  } else {
+    snssaisToCheck = subscribedSnssais.map(s => s.subscribedSnssai);
+  }
 
   for (const snssai of snssaisToCheck) {
     const isSubscribed = subscribedSnssais.some(s => snssaiMatches(s.subscribedSnssai, snssai));
@@ -175,7 +184,11 @@ export const selectNetworkSlicesForRegistration = async (
     });
   }
 
-  for (const subscribedSnssai of subscribedSnssais) {
+  const snssaisForConfigured = defaultConfiguredSnssaiInd
+    ? subscribedSnssais.filter(s => s.defaultIndication === true)
+    : subscribedSnssais;
+
+  for (const subscribedSnssai of snssaisForConfigured) {
     const slice = availableSlices.find((s: SliceConfiguration) =>
       snssaiMatches(s.snssai, subscribedSnssai.subscribedSnssai)
     );
@@ -318,13 +331,22 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
   const subscribedSnssais = subscription.subscribedSnssais;
   const requestedNssais = sliceInfoForUEConfigurationUpdate.requestedNssai || [];
   const rejectedNssaiRa = sliceInfoForUEConfigurationUpdate.rejectedNssaiRa || [];
+  const defaultConfiguredSnssaiInd = sliceInfoForUEConfigurationUpdate.defaultConfiguredSnssaiInd;
 
   const availableSlices = await slicesCollection.find({}).toArray();
 
   const processedSnssais: Snssai[] = [];
 
-  const snssaisToCheck = requestedNssais.length > 0 ? requestedNssais :
-                         subscribedSnssais.map(s => s.subscribedSnssai);
+  let snssaisToCheck: Snssai[];
+  if (defaultConfiguredSnssaiInd && requestedNssais.length === 0) {
+    snssaisToCheck = subscribedSnssais
+      .filter(s => s.defaultIndication === true)
+      .map(s => s.subscribedSnssai);
+  } else if (requestedNssais.length > 0) {
+    snssaisToCheck = requestedNssais;
+  } else {
+    snssaisToCheck = subscribedSnssais.map(s => s.subscribedSnssai);
+  }
 
   for (const snssai of snssaisToCheck) {
     if (rejectedNssaiRa.some(rejected => snssaiMatches(rejected, snssai))) {
@@ -379,7 +401,11 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
     });
   }
 
-  for (const subscribedSnssai of subscribedSnssais) {
+  const snssaisForConfigured = defaultConfiguredSnssaiInd
+    ? subscribedSnssais.filter(s => s.defaultIndication === true)
+    : subscribedSnssais;
+
+  for (const subscribedSnssai of snssaisForConfigured) {
     const slice = availableSlices.find((s: SliceConfiguration) =>
       snssaiMatches(s.snssai, subscribedSnssai.subscribedSnssai)
     );
