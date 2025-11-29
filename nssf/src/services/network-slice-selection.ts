@@ -10,32 +10,32 @@ import {
   RoamingIndication
 } from '../types/nnssf-nsselection-types';
 import { Snssai, PlmnId, Tai, AccessType } from '../types/common-types';
-import { SliceConfiguration, UeSubscription } from '../types/db-types';
+import { SliceConfiguration } from '../types/db-types';
+import { getSubscriptionBySupi } from './subscription';
 
 type NetworkSliceSelectionInput = {
   sliceInfoForRegistration: SliceInfoForRegistration;
-  homePlmnId?: PlmnId;
+  homePlmnId: PlmnId;
+  supi: string;
   tai?: Tai;
 };
 
 type PduSessionSelectionInput = {
   sliceInfoForPDUSession: SliceInfoForPDUSession;
-  homePlmnId?: PlmnId;
+  homePlmnId: PlmnId;
+  supi: string;
   tai?: Tai;
 };
 
 type UeConfigurationUpdateInput = {
   sliceInfoForUEConfigurationUpdate: SliceInfoForUEConfigurationUpdate;
-  homePlmnId?: PlmnId;
+  homePlmnId: PlmnId;
+  supi: string;
   tai?: Tai;
 };
 
 const snssaiMatches = (s1: Snssai, s2: Snssai): boolean => {
   return s1.sst === s2.sst && s1.sd === s2.sd;
-};
-
-const isSnssaiInList = (snssai: Snssai, list: Snssai[]): boolean => {
-  return list.some(s => snssaiMatches(s, snssai));
 };
 
 const plmnMatches = (p1: PlmnId, p2: PlmnId): boolean => {
@@ -55,17 +55,25 @@ const isSliceAvailableInTai = (slice: SliceConfiguration, tai?: Tai): boolean =>
 export const selectNetworkSlicesForRegistration = async (
   input: NetworkSliceSelectionInput
 ): Promise<AuthorizedNetworkSliceInfo> => {
-  const { sliceInfoForRegistration, homePlmnId, tai } = input;
+  const { sliceInfoForRegistration, homePlmnId, supi, tai } = input;
 
   const slicesCollection = getCollection<SliceConfiguration>('slices');
-  const subscriptionsCollection = getCollection<UeSubscription>('subscriptions');
 
   const allowedNssaiList: AllowedNssai[] = [];
   const configuredNssai: ConfiguredSnssai[] = [];
   const rejectedNssaiInPlmn: Snssai[] = [];
   const rejectedNssaiInTa: Snssai[] = [];
 
-  const subscribedSnssais = sliceInfoForRegistration.subscribedNssai || [];
+  const subscription = await getSubscriptionBySupi(supi, homePlmnId);
+
+  if (!subscription) {
+    const requestedNssais = sliceInfoForRegistration.requestedNssai || [];
+    return {
+      rejectedNssaiInPlmn: requestedNssais.length > 0 ? requestedNssais : undefined
+    };
+  }
+
+  const subscribedSnssais = subscription.subscribedSnssais;
   const requestedNssais = sliceInfoForRegistration.requestedNssai || [];
 
   const availableSlices = await slicesCollection.find({}).toArray();
@@ -92,7 +100,7 @@ export const selectNetworkSlicesForRegistration = async (
       continue;
     }
 
-    if (homePlmnId && !plmnMatches(availableSlice.plmnId, homePlmnId)) {
+    if (!plmnMatches(availableSlice.plmnId, homePlmnId)) {
       rejectedNssaiInPlmn.push(snssai);
       continue;
     }
@@ -139,7 +147,7 @@ export const selectNetworkSlicesForRegistration = async (
 export const selectNetworkSlicesForPDUSession = async (
   input: PduSessionSelectionInput
 ): Promise<AuthorizedNetworkSliceInfo> => {
-  const { sliceInfoForPDUSession, homePlmnId, tai } = input;
+  const { sliceInfoForPDUSession, homePlmnId, supi, tai } = input;
 
   const slicesCollection = getCollection<SliceConfiguration>('slices');
 
@@ -147,12 +155,30 @@ export const selectNetworkSlicesForPDUSession = async (
   const roamingIndication = sliceInfoForPDUSession.roamingIndication;
   const homeSnssai = sliceInfoForPDUSession.homeSnssai;
 
-  const availableSlices = await slicesCollection.find({}).toArray();
+  const subscription = await getSubscriptionBySupi(supi, homePlmnId);
+
+  if (!subscription) {
+    return {
+      rejectedNssaiInPlmn: [requestedSnssai]
+    };
+  }
 
   let targetSnssai = requestedSnssai;
   if (roamingIndication === RoamingIndication.HOME_ROUTED_ROAMING && homeSnssai) {
     targetSnssai = homeSnssai;
   }
+
+  const isSubscribed = subscription.subscribedSnssais.some(s =>
+    snssaiMatches(s.subscribedSnssai, targetSnssai)
+  );
+
+  if (!isSubscribed) {
+    return {
+      rejectedNssaiInPlmn: [requestedSnssai]
+    };
+  }
+
+  const availableSlices = await slicesCollection.find({}).toArray();
 
   const availableSlice = availableSlices.find((slice: SliceConfiguration) =>
     snssaiMatches(slice.snssai, targetSnssai)
@@ -164,7 +190,7 @@ export const selectNetworkSlicesForPDUSession = async (
     };
   }
 
-  if (homePlmnId && !plmnMatches(availableSlice.plmnId, homePlmnId)) {
+  if (!plmnMatches(availableSlice.plmnId, homePlmnId)) {
     return {
       rejectedNssaiInPlmn: [requestedSnssai]
     };
@@ -197,7 +223,7 @@ export const selectNetworkSlicesForPDUSession = async (
 export const selectNetworkSlicesForUEConfigurationUpdate = async (
   input: UeConfigurationUpdateInput
 ): Promise<AuthorizedNetworkSliceInfo> => {
-  const { sliceInfoForUEConfigurationUpdate, homePlmnId, tai } = input;
+  const { sliceInfoForUEConfigurationUpdate, homePlmnId, supi, tai } = input;
 
   const slicesCollection = getCollection<SliceConfiguration>('slices');
 
@@ -206,7 +232,16 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
   const rejectedNssaiInPlmn: Snssai[] = [];
   const rejectedNssaiInTa: Snssai[] = [];
 
-  const subscribedSnssais = sliceInfoForUEConfigurationUpdate.subscribedNssai || [];
+  const subscription = await getSubscriptionBySupi(supi, homePlmnId);
+
+  if (!subscription) {
+    const requestedNssais = sliceInfoForUEConfigurationUpdate.requestedNssai || [];
+    return {
+      rejectedNssaiInPlmn: requestedNssais.length > 0 ? requestedNssais : undefined
+    };
+  }
+
+  const subscribedSnssais = subscription.subscribedSnssais;
   const requestedNssais = sliceInfoForUEConfigurationUpdate.requestedNssai || [];
   const rejectedNssaiRa = sliceInfoForUEConfigurationUpdate.rejectedNssaiRa || [];
 
@@ -239,7 +274,7 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
       continue;
     }
 
-    if (homePlmnId && !plmnMatches(availableSlice.plmnId, homePlmnId)) {
+    if (!plmnMatches(availableSlice.plmnId, homePlmnId)) {
       rejectedNssaiInPlmn.push(snssai);
       continue;
     }

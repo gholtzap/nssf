@@ -9,6 +9,7 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
   try {
     const nfType = req.query['nf-type'] as NFType;
     const nfId = req.query['nf-id'] as string;
+    const supi = req.query['supi'] as string | undefined;
     const sliceInfoRequestForRegistrationRaw = req.query['slice-info-request-for-registration'] as string | undefined;
     const sliceInfoRequestForPduSessionRaw = req.query['slice-info-request-for-pdu-session'] as string | undefined;
     const sliceInfoRequestForUeCuRaw = req.query['slice-info-request-for-ue-cu'] as string | undefined;
@@ -23,36 +24,50 @@ router.get('/network-slice-information', async (req: Request, res: Response) => 
       });
     }
 
+    if (!supi) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'supi is required'
+      });
+    }
+
+    if (!homePlmnIdRaw) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'home-plmn-id is required'
+      });
+    }
+
     let authorizedNetworkSliceInfo: AuthorizedNetworkSliceInfo;
+
+    const homePlmnId: PlmnId = JSON.parse(homePlmnIdRaw);
+    const tai: Tai | undefined = taiRaw ? JSON.parse(taiRaw) : undefined;
 
     if (sliceInfoRequestForRegistrationRaw) {
       const sliceInfoRequestForRegistration: SliceInfoForRegistration = JSON.parse(sliceInfoRequestForRegistrationRaw);
-      const homePlmnId: PlmnId | undefined = homePlmnIdRaw ? JSON.parse(homePlmnIdRaw) : undefined;
-      const tai: Tai | undefined = taiRaw ? JSON.parse(taiRaw) : undefined;
 
       authorizedNetworkSliceInfo = await selectNetworkSlicesForRegistration({
         sliceInfoForRegistration: sliceInfoRequestForRegistration,
         homePlmnId,
+        supi,
         tai
       });
     } else if (sliceInfoRequestForPduSessionRaw) {
       const sliceInfoRequestForPduSession: SliceInfoForPDUSession = JSON.parse(sliceInfoRequestForPduSessionRaw);
-      const homePlmnId: PlmnId | undefined = homePlmnIdRaw ? JSON.parse(homePlmnIdRaw) : undefined;
-      const tai: Tai | undefined = taiRaw ? JSON.parse(taiRaw) : undefined;
 
       authorizedNetworkSliceInfo = await selectNetworkSlicesForPDUSession({
         sliceInfoForPDUSession: sliceInfoRequestForPduSession,
         homePlmnId,
+        supi,
         tai
       });
     } else if (sliceInfoRequestForUeCuRaw) {
       const sliceInfoRequestForUeCu: SliceInfoForUEConfigurationUpdate = JSON.parse(sliceInfoRequestForUeCuRaw);
-      const homePlmnId: PlmnId | undefined = homePlmnIdRaw ? JSON.parse(homePlmnIdRaw) : undefined;
-      const tai: Tai | undefined = taiRaw ? JSON.parse(taiRaw) : undefined;
 
       authorizedNetworkSliceInfo = await selectNetworkSlicesForUEConfigurationUpdate({
         sliceInfoForUEConfigurationUpdate: sliceInfoRequestForUeCu,
         homePlmnId,
+        supi,
         tai
       });
     } else {

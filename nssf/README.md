@@ -43,6 +43,9 @@ My testing framework of choice is Mocha.
 - Network Slice Selection for UE Registration
 - Network Slice Selection for PDU Session Establishment
 - Network Slice Selection for UE Configuration Update
+- Subscribed S-NSSAI storage and retrieval
+- Subscriber profile management in MongoDB
+- Slice subscription validation
 
 ## NOT IMPLEMENTED FEATURES
 
@@ -91,9 +94,6 @@ My testing framework of choice is Mocha.
 - VPLMN/HPLMN S-NSSAI mapping
 
 ### Subscription & Policy Management
-- Subscribed S-NSSAI storage and retrieval
-- Subscriber profile management in MongoDB
-- Slice subscription validation
 - Default configured S-NSSAI handling
 - Network Slice-Specific Registration Group (NSSRG) support
 - UE NSSRG support indication handling
