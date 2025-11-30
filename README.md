@@ -105,6 +105,13 @@ My testing framework of choice is Mocha.
 - `PUT /nssf-config/v1/nsags/:nsagId` - Update NSAG configuration
 - `DELETE /nssf-config/v1/nsags/:nsagId` - Delete NSAG configuration
 
+#### NSSRG Configuration
+- `GET /nssf-config/v1/nssrgs` - Get all NSSRG configurations
+- `GET /nssf-config/v1/nssrgs/:nssrgId` - Get specific NSSRG configuration
+- `POST /nssf-config/v1/nssrgs` - Create NSSRG configuration
+- `PUT /nssf-config/v1/nssrgs/:nssrgId` - Update NSSRG configuration
+- `DELETE /nssf-config/v1/nssrgs/:nssrgId` - Delete NSSRG configuration
+
 ## IMPLEMENTED FEATURES
 
 - Basic server setup with Express
@@ -187,15 +194,18 @@ My testing framework of choice is Mocha.
 - NSAG-based admission decisions
 - NSAG configuration management
 - NSAG capacity control and UE count tracking
+- Network Slice-Specific Registration Group (NSSRG) support
+- UE NSSRG support indication handling
+- NSSRG suppression indication handling
+- NSSRG configuration management
+- NSSRG assignment and capacity control
+- NSSRG-based slice registration control
 
 ## NOT IMPLEMENTED FEATURES
 
 ### Geographical & Topology Support
 
 ### Subscription & Policy Management
-- Network Slice-Specific Registration Group (NSSRG) support
-- UE NSSRG support indication handling
-- NSSRG suppression indication handling
 
 ### Security & Authorization
 - OAuth2 client credentials flow

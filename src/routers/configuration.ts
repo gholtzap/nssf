@@ -59,6 +59,13 @@ import {
   updateNsagConfiguration,
   deleteNsagConfiguration
 } from '../services/nsag-configuration';
+import {
+  getAllNssrgConfigurations,
+  getNssrgConfiguration,
+  createNssrgConfiguration,
+  updateNssrgConfiguration,
+  deleteNssrgConfiguration
+} from '../services/nssrg-configuration';
 import { handleError } from '../utils/error-handler';
 import { createProblemDetails } from '../types/problem-details-types';
 
@@ -828,6 +835,87 @@ router.delete('/nsags/:nsagId', async (req: Request, res: Response) => {
       ));
     }
     handleError(error, res, 'DELETE /nsags/:nsagId');
+  }
+});
+
+router.get('/nssrgs', async (req: Request, res: Response) => {
+  try {
+    const nssrgs = await getAllNssrgConfigurations();
+    res.json(nssrgs);
+  } catch (error) {
+    handleError(error, res, 'GET /nssrgs');
+  }
+});
+
+router.get('/nssrgs/:nssrgId', async (req: Request, res: Response) => {
+  try {
+    const nssrgId = req.params.nssrgId;
+    const nssrg = await getNssrgConfiguration(nssrgId);
+
+    if (!nssrg) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'NSSRG configuration not found'
+      ));
+    }
+
+    res.json(nssrg);
+  } catch (error) {
+    handleError(error, res, 'GET /nssrgs/:nssrgId');
+  }
+});
+
+router.post('/nssrgs', async (req: Request, res: Response) => {
+  try {
+    await createNssrgConfiguration(req.body);
+    res.status(201).json({ message: 'NSSRG configuration created successfully' });
+  } catch (error: any) {
+    if (error.message?.includes('already exists')) {
+      return res.status(409).json(createProblemDetails(
+        409,
+        'Conflict',
+        'NSSRG configuration already exists',
+        error.message
+      ));
+    }
+    handleError(error, res, 'POST /nssrgs');
+  }
+});
+
+router.put('/nssrgs/:nssrgId', async (req: Request, res: Response) => {
+  try {
+    const nssrgId = req.params.nssrgId;
+    await updateNssrgConfiguration(nssrgId, req.body);
+    res.json({ message: 'NSSRG configuration updated successfully' });
+  } catch (error: any) {
+    if (error.message?.includes('not found')) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'NSSRG configuration not found',
+        error.message
+      ));
+    }
+    handleError(error, res, 'PUT /nssrgs/:nssrgId');
+  }
+});
+
+router.delete('/nssrgs/:nssrgId', async (req: Request, res: Response) => {
+  try {
+    const nssrgId = req.params.nssrgId;
+    await deleteNssrgConfiguration(nssrgId);
+    res.json({ message: 'NSSRG configuration deleted successfully' });
+  } catch (error: any) {
+    if (error.message?.includes('not found')) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'NSSRG configuration not found',
+        error.message
+      ));
+    }
+    handleError(error, res, 'DELETE /nssrgs/:nssrgId');
   }
 });
 

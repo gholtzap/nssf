@@ -20,6 +20,8 @@ import { processMappingRequests, getMappingForSnssai, getReverseMappingForSnssai
 import { negotiateFeatures } from './feature-negotiation';
 import { checkNsagAdmission } from './nsag-admission-control';
 import { incrementNsagUeCount } from './nsag-configuration';
+import { assignNssrg } from './nssrg-processing';
+import { incrementNssrgUeCount } from './nssrg-configuration';
 
 type NetworkSliceSelectionInput = {
   sliceInfoForRegistration: SliceInfoForRegistration;
@@ -151,10 +153,13 @@ export const selectNetworkSlicesForRegistration = async (
     const subscribedSnssais = subscription.subscribedSnssais;
     const requestedNssais = sliceInfoForRegistration.requestedNssai || [];
     const defaultConfiguredSnssaiInd = sliceInfoForRegistration.defaultConfiguredSnssaiInd;
+    const ueSupNssrgInd = sliceInfoForRegistration.ueSupNssrgInd || false;
+    const suppressNssrgInd = sliceInfoForRegistration.suppressNssrgInd || false;
 
     const availableSlices = await slicesCollection.find({}).toArray();
 
   const processedSnssais: Snssai[] = [];
+  const nssrgAssignments = new Map<string, string>();
 
   let snssaisToCheck: Snssai[];
   if (defaultConfiguredSnssaiInd && requestedNssais.length === 0) {
@@ -210,6 +215,15 @@ export const selectNetworkSlicesForRegistration = async (
 
     if (nsagAdmission.nsagId !== undefined) {
       await incrementNsagUeCount(nsagAdmission.nsagId);
+    }
+
+    if (ueSupNssrgInd && !suppressNssrgInd) {
+      const nssrgAssignment = await assignNssrg(snssai, targetPlmnId, tai);
+      if (nssrgAssignment.assigned && nssrgAssignment.nssrgId) {
+        await incrementNssrgUeCount(nssrgAssignment.nssrgId);
+        const snssaiKey = `${snssai.sst}-${snssai.sd || 'none'}`;
+        nssrgAssignments.set(snssaiKey, nssrgAssignment.nssrgId);
+      }
     }
 
     processedSnssais.push(snssai);
@@ -470,10 +484,13 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
   const requestedNssais = sliceInfoForUEConfigurationUpdate.requestedNssai || [];
   const rejectedNssaiRa = sliceInfoForUEConfigurationUpdate.rejectedNssaiRa || [];
   const defaultConfiguredSnssaiInd = sliceInfoForUEConfigurationUpdate.defaultConfiguredSnssaiInd;
+  const ueSupNssrgInd = sliceInfoForUEConfigurationUpdate.ueSupNssrgInd || false;
+  const suppressNssrgInd = sliceInfoForUEConfigurationUpdate.suppressNssrgInd || false;
 
   const availableSlices = await slicesCollection.find({}).toArray();
 
   const processedSnssais: Snssai[] = [];
+  const nssrgAssignments = new Map<string, string>();
 
   let snssaisToCheck: Snssai[];
   if (defaultConfiguredSnssaiInd && requestedNssais.length === 0) {
@@ -534,6 +551,15 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
 
     if (nsagAdmission.nsagId !== undefined) {
       await incrementNsagUeCount(nsagAdmission.nsagId);
+    }
+
+    if (ueSupNssrgInd && !suppressNssrgInd) {
+      const nssrgAssignment = await assignNssrg(snssai, targetPlmnId, tai);
+      if (nssrgAssignment.assigned && nssrgAssignment.nssrgId) {
+        await incrementNssrgUeCount(nssrgAssignment.nssrgId);
+        const snssaiKey = `${snssai.sst}-${snssai.sd || 'none'}`;
+        nssrgAssignments.set(snssaiKey, nssrgAssignment.nssrgId);
+      }
     }
 
     processedSnssais.push(snssai);

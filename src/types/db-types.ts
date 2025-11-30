@@ -1,4 +1,4 @@
-import { Snssai, PlmnId, Tai, AccessType, Uri, NsagId } from './common-types';
+import { Snssai, PlmnId, Tai, AccessType, Uri, NsagId, NsSrg } from './common-types';
 import { SubscribedSnssai, NsiId } from './nnssf-nsselection-types';
 
 export type SliceConfiguration = {
@@ -71,6 +71,18 @@ export type TaiRange = {
 
 export type NsagConfiguration = {
   nsagId: NsagId;
+  snssaiList: Snssai[];
+  plmnId: PlmnId;
+  taiList?: Tai[];
+  taiRangeList?: TaiRange[];
+  maxUeCount?: number;
+  currentUeCount?: number;
+  priority?: number;
+  enabled: boolean;
+};
+
+export type NssrgConfiguration = {
+  nssrgId: NsSrg;
   snssaiList: Snssai[];
   plmnId: PlmnId;
   taiList?: Tai[];
