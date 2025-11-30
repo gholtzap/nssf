@@ -98,6 +98,13 @@ My testing framework of choice is Mocha.
 - `PUT /nssf-config/v1/snssai-mappings/:mappingId` - Update S-NSSAI mapping
 - `DELETE /nssf-config/v1/snssai-mappings/:mappingId` - Delete S-NSSAI mapping
 
+#### NSAG Configuration
+- `GET /nssf-config/v1/nsags` - Get all NSAG configurations
+- `GET /nssf-config/v1/nsags/:nsagId` - Get specific NSAG configuration
+- `POST /nssf-config/v1/nsags` - Create NSAG configuration
+- `PUT /nssf-config/v1/nsags/:nsagId` - Update NSAG configuration
+- `DELETE /nssf-config/v1/nsags/:nsagId` - Delete NSAG configuration
+
 ## IMPLEMENTED FEATURES
 
 - Basic server setup with Express
@@ -174,6 +181,12 @@ My testing framework of choice is Mocha.
 - Feature negotiation between NF consumer and NSSF
 - Required features for target slice instances
 - NF capability-based slice selection
+- Network Slice Admission Group (NSAG) support
+- NSAG to S-NSSAI association
+- NSAG information provisioning with TAI ranges
+- NSAG-based admission decisions
+- NSAG configuration management
+- NSAG capacity control and UE count tracking
 
 ## NOT IMPLEMENTED FEATURES
 
@@ -183,12 +196,6 @@ My testing framework of choice is Mocha.
 - Network Slice-Specific Registration Group (NSSRG) support
 - UE NSSRG support indication handling
 - NSSRG suppression indication handling
-
-### Network Slice Admission Control
-- Network Slice Admission Group (NSAG) support
-- NSAG to S-NSSAI association
-- NSAG information provisioning with TAI ranges
-- NSAG-based admission decisions
 
 ### Security & Authorization
 - OAuth2 client credentials flow

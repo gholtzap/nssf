@@ -52,6 +52,13 @@ import {
   updateSnssaiMapping,
   deleteSnssaiMapping
 } from '../services/snssai-mapping';
+import {
+  getAllNsagConfigurations,
+  getNsagConfiguration,
+  createNsagConfiguration,
+  updateNsagConfiguration,
+  deleteNsagConfiguration
+} from '../services/nsag-configuration';
 import { handleError } from '../utils/error-handler';
 import { createProblemDetails } from '../types/problem-details-types';
 
@@ -740,6 +747,87 @@ router.delete('/snssai-mappings/:mappingId', async (req: Request, res: Response)
     res.json({ message: 'S-NSSAI mapping deleted successfully' });
   } catch (error) {
     handleError(error, res, 'DELETE /snssai-mappings/:mappingId');
+  }
+});
+
+router.get('/nsags', async (req: Request, res: Response) => {
+  try {
+    const nsags = await getAllNsagConfigurations();
+    res.json(nsags);
+  } catch (error) {
+    handleError(error, res, 'GET /nsags');
+  }
+});
+
+router.get('/nsags/:nsagId', async (req: Request, res: Response) => {
+  try {
+    const nsagId = parseInt(req.params.nsagId);
+    const nsag = await getNsagConfiguration(nsagId);
+
+    if (!nsag) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'NSAG configuration not found'
+      ));
+    }
+
+    res.json(nsag);
+  } catch (error) {
+    handleError(error, res, 'GET /nsags/:nsagId');
+  }
+});
+
+router.post('/nsags', async (req: Request, res: Response) => {
+  try {
+    await createNsagConfiguration(req.body);
+    res.status(201).json({ message: 'NSAG configuration created successfully' });
+  } catch (error: any) {
+    if (error.message?.includes('already exists')) {
+      return res.status(409).json(createProblemDetails(
+        409,
+        'Conflict',
+        'NSAG configuration already exists',
+        error.message
+      ));
+    }
+    handleError(error, res, 'POST /nsags');
+  }
+});
+
+router.put('/nsags/:nsagId', async (req: Request, res: Response) => {
+  try {
+    const nsagId = parseInt(req.params.nsagId);
+    await updateNsagConfiguration(nsagId, req.body);
+    res.json({ message: 'NSAG configuration updated successfully' });
+  } catch (error: any) {
+    if (error.message?.includes('not found')) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'NSAG configuration not found',
+        error.message
+      ));
+    }
+    handleError(error, res, 'PUT /nsags/:nsagId');
+  }
+});
+
+router.delete('/nsags/:nsagId', async (req: Request, res: Response) => {
+  try {
+    const nsagId = parseInt(req.params.nsagId);
+    await deleteNsagConfiguration(nsagId);
+    res.json({ message: 'NSAG configuration deleted successfully' });
+  } catch (error: any) {
+    if (error.message?.includes('not found')) {
+      return res.status(404).json(createProblemDetails(
+        404,
+        'Not Found',
+        'NSAG configuration not found',
+        error.message
+      ));
+    }
+    handleError(error, res, 'DELETE /nsags/:nsagId');
   }
 });
 

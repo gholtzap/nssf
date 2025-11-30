@@ -18,6 +18,8 @@ import { performAmfSelection } from './amf-selection';
 import { determineAllowedNssai } from './allowed-nssai';
 import { processMappingRequests, getMappingForSnssai, getReverseMappingForSnssai } from './snssai-mapping';
 import { negotiateFeatures } from './feature-negotiation';
+import { checkNsagAdmission } from './nsag-admission-control';
+import { incrementNsagUeCount } from './nsag-configuration';
 
 type NetworkSliceSelectionInput = {
   sliceInfoForRegistration: SliceInfoForRegistration;
@@ -198,6 +200,16 @@ export const selectNetworkSlicesForRegistration = async (
     if (!policyResult.allowed) {
       rejectedNssaiInPlmn.push(snssai);
       continue;
+    }
+
+    const nsagAdmission = await checkNsagAdmission(snssai, targetPlmnId, tai);
+    if (!nsagAdmission.admitted) {
+      rejectedNssaiInPlmn.push(snssai);
+      continue;
+    }
+
+    if (nsagAdmission.nsagId !== undefined) {
+      await incrementNsagUeCount(nsagAdmission.nsagId);
     }
 
     processedSnssais.push(snssai);
@@ -381,6 +393,17 @@ export const selectNetworkSlicesForPDUSession = async (
     };
   }
 
+  const nsagAdmission = await checkNsagAdmission(targetSnssai, targetPlmnId, tai);
+  if (!nsagAdmission.admitted) {
+    return {
+      rejectedNssaiInPlmn: [requestedSnssai]
+    };
+  }
+
+  if (nsagAdmission.nsagId !== undefined) {
+    await incrementNsagUeCount(nsagAdmission.nsagId);
+  }
+
   const nsiInformationList = await selectNsiForSnssai(requestedSnssai, targetPlmnId, tai);
 
   const allowedSnssai: AllowedSnssai = {
@@ -501,6 +524,16 @@ export const selectNetworkSlicesForUEConfigurationUpdate = async (
     if (!policyResult.allowed) {
       rejectedNssaiInPlmn.push(snssai);
       continue;
+    }
+
+    const nsagAdmission = await checkNsagAdmission(snssai, targetPlmnId, tai);
+    if (!nsagAdmission.admitted) {
+      rejectedNssaiInPlmn.push(snssai);
+      continue;
+    }
+
+    if (nsagAdmission.nsagId !== undefined) {
+      await incrementNsagUeCount(nsagAdmission.nsagId);
     }
 
     processedSnssais.push(snssai);
