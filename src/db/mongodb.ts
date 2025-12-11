@@ -1,7 +1,7 @@
 import { MongoClient, Db, Collection, Document, MongoError } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
-const DB_NAME = process.env.MONGODB_DB_NAME!;
+const DB_NAME = process.env.MONGODB_DB_NAME || process.env.MONGODB_DATABASE!;
 const COLLECTION_NAME = process.env.MONGODB_COLLECTION_NAME!;
 
 let db: Db;
@@ -32,7 +32,7 @@ export const initializeMongoDB = async (): Promise<void> => {
   }
 
   if (!DB_NAME) {
-    throw new DatabaseError('MONGODB_DB_NAME environment variable is not set');
+    throw new DatabaseError('MONGODB_DB_NAME or MONGODB_DATABASE environment variable is not set');
   }
 
   while (connectionRetries < MAX_RETRIES) {
