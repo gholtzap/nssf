@@ -46,5 +46,5 @@ TODO.md
 # UERANSIM - external testing tool
 UERANSIM/
 
-# Core components not yet set up as submodules
+.claude/
 ausf/
