@@ -1,0 +1,6 @@
+*.txt
+.claude/
+.env
+*.env
+CLAUDE.md
+target/ 
