@@ -27,7 +27,9 @@ impl Config {
         let mongodb_db_name = env::var("MONGODB_DB_NAME")
             .unwrap_or_else(|_| "nssf".to_string());
 
-        let nrf_uri = env::var("NRF_URI").ok();
+        let nrf_uri = env::var("NRF_URI")
+            .ok()
+            .filter(|s| !s.is_empty());
 
         let home_plmn = env::var("HOME_PLMN")
             .unwrap_or_else(|_| "99970".to_string());

@@ -21,3 +21,4 @@ dotenvy = "0.15"
 tower = "0.4"
 tower-http = { version = "0.5", features = ["trace", "cors"] }
 hex = "0.4"
+futures = "0.3"

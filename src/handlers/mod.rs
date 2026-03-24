@@ -1,0 +1,11 @@
+pub mod amf_configuration;
+pub mod configuration;
+pub mod health;
+pub mod nsag_configuration;
+pub mod nsi_configuration;
+pub mod nssaiavailability;
+pub mod nsselection;
+pub mod nssrg_configuration;
+pub mod policy_configuration;
+pub mod snssai_mapping_configuration;
+pub mod subscription_configuration;
